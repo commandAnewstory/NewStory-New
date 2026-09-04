@@ -32,3 +32,9 @@ claude:
 
 gemma:
   api-url: ${GEMMA_API_URL:http://localhost:8081/convert}
+
+google:
+  client-id:
+    android: ${GOOGLE_CLIENT_ID_ANDROID:}
+    ios: ${GOOGLE_CLIENT_ID_IOS:}
+    web: ${GOOGLE_CLIENT_ID_WEB:}

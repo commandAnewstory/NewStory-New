@@ -4,6 +4,7 @@ import com.newstory.newstorybackend.domain.auth.dto.LoginRequest;
 import com.newstory.newstorybackend.domain.auth.dto.LoginResponse;
 import com.newstory.newstorybackend.domain.auth.dto.RefreshRequest;
 import com.newstory.newstorybackend.domain.auth.dto.SignupRequest;
+import com.newstory.newstorybackend.domain.auth.dto.SocialUserInfo;
 import com.newstory.newstorybackend.domain.auth.dto.TokenResponse;
 import com.newstory.newstorybackend.domain.user.entity.User;
 import com.newstory.newstorybackend.domain.user.repository.UserRepository;
@@ -50,6 +51,32 @@ public class AuthService {
         || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
       throw new UnauthorizedException("이메일 또는 비밀번호가 올바르지 않습니다.");
     }
+
+    String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail());
+    String refreshToken = jwtUtil.generateRefreshToken(user.getId());
+    refreshTokenStore.save(refreshToken, user.getId());
+
+    return new LoginResponse(accessToken, refreshToken, user.getNickname());
+  }
+
+  @Transactional
+  public LoginResponse socialLogin(SocialUserInfo info) {
+    User user =
+        userRepository
+            .findByProviderAndProviderId(info.provider(), info.providerId())
+            .orElseGet(
+                () -> {
+                  if (userRepository.existsByEmail(info.email())) {
+                    throw new ConflictException("이미 다른 방식으로 가입된 이메일입니다. 기존 계정으로 로그인해주세요.");
+                  }
+                  return userRepository.save(
+                      User.builder()
+                          .email(info.email())
+                          .nickname(info.email().split("@")[0])
+                          .provider(info.provider())
+                          .providerId(info.providerId())
+                          .build());
+                });
 
     String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getEmail());
     String refreshToken = jwtUtil.generateRefreshToken(user.getId());

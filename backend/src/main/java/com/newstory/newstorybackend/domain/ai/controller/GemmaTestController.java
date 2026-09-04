@@ -20,7 +20,9 @@ public class GemmaTestController {
 
   @PostMapping("/test")
   public ApiResponse<String> test(
-      @RequestBody String content, @RequestParam(defaultValue = "card") String style) {
-    return ApiResponse.ok(gemmaApiClient.convert(content, style));
+      @RequestBody String content,
+      @RequestParam(defaultValue = "card") String style,
+      @RequestParam(defaultValue = "MEDIUM") String level) {
+    return ApiResponse.ok(gemmaApiClient.convert(content, style, level));
   }
 }

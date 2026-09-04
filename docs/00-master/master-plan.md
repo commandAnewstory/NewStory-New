@@ -42,7 +42,7 @@
 ## 4. 확정 기능 백로그 (우선순위 순)
 1. 백엔드 버그/보안 선행 정리
 2. RSS 기반 뉴스 수집 전환
-3. 용어 탭-설명 (전 스타일 공통)
+3. 용어 탭-설명 (전 스타일 공통) — 난이도 레벨 3단계(LOW/MEDIUM/HIGH) 포함. 낮을수록 마킹되는 용어 수 많아짐. 요청마다 선택 가능하되 기본값은 사용자의 최근 선택 레벨
 4. 변환 결과 캐싱
 5. 카드요약 예상 읽기 시간 배지
 6. 소셜 로그인 (카카오/구글)
@@ -68,6 +68,7 @@
 |---|---|---|
 | GET `/api/users/me` | 🟢 | 내 정보 조회 |
 | PATCH `/api/users/me` | 🟡 | `UpdateUserRequest`에 `widgetEnabled`(boolean) 필드 추가 |
+| GET `/api/users/me` 응답 | 🟡 | `lastGlossaryLevel`(`LOW`\|`MEDIUM`\|`HIGH`) 필드 추가 — 변환 화면 기본 선택값으로 사용 |
 
 ### 뉴스
 | 메서드/경로 | 상태 | 설명 |
@@ -82,10 +83,12 @@
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
 | GET `/api/convert/original` | 🟢 | 원본 크롤링, 인증 불필요 |
-| POST `/api/convert` | 🟡 | 응답 확장: `glossary`(용어-뜻풀이 배열), `readingTimeLabel`(카드요약일 때만). 내부적으로 캐시 확인 로직 추가 |
+| POST `/api/convert` | 🟡 | 요청에 `level`(`LOW`\|`MEDIUM`\|`HIGH`, 생략 시 사용자의 `lastGlossaryLevel` 사용) 추가. 응답 확장: `glossary`(용어-뜻풀이 배열), `readingTimeLabel`(카드요약일 때만). 요청 처리 시 `users.last_glossary_level`을 이번 `level`로 갱신. 내부적으로 캐시 확인 로직 추가 |
 | GET `/api/convert/{resultId}` | 🟢 | 변환 결과 단건 조회 |
 
 `glossary` 설계: Agent A가 어려운 용어를 `{{term:용어|뜻풀이}}` 형태로 본문에 인라인 마킹. 백엔드가 파싱해 순수 텍스트 + 용어-뜻풀이 매핑 배열로 분리 응답. 오프셋 계산 없이 안정적으로 처리.
+
+**난이도 레벨(`level`)**: LOW/MEDIUM/HIGH. 낮을수록 마킹 개수 많음(설명 필요한 용어 수가 많은 사용자 대상). Agent A 프롬프트에 레벨별 마킹 개수 가이드라인 포함. 사용자의 마지막 선택 레벨은 `users.last_glossary_level`에 저장되어 다음 요청 기본값으로 쓰임.
 
 ### 위젯 (신규 도메인)
 | 메서드/경로 | 상태 | 설명 |
@@ -112,6 +115,7 @@
 - `provider_id VARCHAR(255) NULL` 추가
 - `password` 컬럼 `NULL` 허용으로 변경 (소셜 로그인 계정은 비밀번호 없음)
 - `widget_enabled BOOLEAN NOT NULL DEFAULT false` 추가
+- `last_glossary_level VARCHAR(10) NOT NULL DEFAULT 'MEDIUM'` 추가 — 용어 글로서리 난이도 마지막 선택값
 - UNIQUE 제약 `(provider, provider_id)` 추가
 
 **신규 테이블: conversion_cache**
@@ -119,14 +123,17 @@
 id BIGSERIAL PK
 article_id BIGINT FK -> news_articles
 style VARCHAR(20)  -- fairy_tale | novel | card
+level VARCHAR(10)  -- LOW | MEDIUM | HIGH
 converted_text TEXT
 glossary JSONB
 verification_passed BOOLEAN
 retry_count INTEGER
 created_at TIMESTAMP
-UNIQUE (article_id, style)
+UNIQUE (article_id, style, level)
 ```
-`converted_results`(사용자별 히스토리 로그)와는 별도 — 캐시는 기사+스타일 단위 전역 공유, 히스토리는 사용자별 요청 기록. `POST /api/convert`: 캐시 먼저 조회 → 있으면 AI 재호출 없이 `converted_results`에 사용자별 행만 생성 → 없으면 파이프라인 실행 후 둘 다 저장.
+캐시 키가 `(article_id, style)`에서 `(article_id, style, level)`로 바뀜 — 레벨마다 glossary 마킹 개수가 달라 같은 기사+스타일이어도 레벨별로 변환 결과가 다르기 때문. 이미 존재하던 `(article_id, style)` UNIQUE 제약은 마이그레이션에서 드롭 후 새 3-컬럼 UNIQUE로 교체.
+
+`converted_results`(사용자별 히스토리 로그)와는 별도 — 캐시는 기사+스타일+레벨 단위 전역 공유, 히스토리는 사용자별 요청 기록. `POST /api/convert`: 캐시 먼저 조회 → 있으면 AI 재호출 없이 `converted_results`에 사용자별 행만 생성 → 없으면 파이프라인 실행 후 둘 다 저장.
 
 ## 7. 알려진 버그/보안 이슈 (선행 정리 대상)
 - `ConvertService`: `verificationPassed`가 실제 검증 결과와 무관하게 항상 `true`로 저장되는 로직 오류 수정

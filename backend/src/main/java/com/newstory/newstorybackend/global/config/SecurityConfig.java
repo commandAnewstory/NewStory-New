@@ -43,6 +43,8 @@ public class SecurityConfig {
                         "/api/auth/refresh",
                         "/api/auth/logout")
                     .permitAll()
+                    .requestMatchers("/api/auth/social/**")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/news")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/news/categories")
@@ -54,6 +56,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET, "/api/feed")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/convert/original")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/widget/today-cards")
                     .permitAll()
                     .requestMatchers("/api/debug/**")
                     .permitAll()
