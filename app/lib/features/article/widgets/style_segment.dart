@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 const _styles = [
-  ('fairytale', '동화체'),
+  ('fairy_tale', '동화체'),
   ('novel', '소설체'),
   ('card', '카드요약'),
 ];

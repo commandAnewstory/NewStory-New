@@ -15,13 +15,13 @@ class ConvertedTab extends StatelessWidget {
   });
 
   Color get _bgColor => switch (style) {
-        'fairytale' => AppColors.fairyTaleBg,
+        'fairy_tale' => AppColors.fairyTaleBg,
         'novel' => AppColors.novelBg,
         _ => AppColors.background,
       };
 
   Color get _textColor => switch (style) {
-        'fairytale' => AppColors.fairyTaleText,
+        'fairy_tale' => AppColors.fairyTaleText,
         'novel' => AppColors.novelText,
         _ => AppColors.ink,
       };

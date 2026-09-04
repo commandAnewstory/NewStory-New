@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
+import '../home/article_repository.dart';
 
 class GlossaryItem {
   final String term;
@@ -26,6 +27,7 @@ class ConvertResult {
 }
 
 class ArticleDetailState {
+  final String? articleUrl;
   final String? originalContent;
   final String? title;
   final bool isLoadingArticle;
@@ -35,10 +37,11 @@ class ArticleDetailState {
   final String? convertError;
 
   const ArticleDetailState({
+    this.articleUrl,
     this.originalContent,
     this.title,
     this.isLoadingArticle = true,
-    this.selectedStyle = 'fairytale',
+    this.selectedStyle = 'fairy_tale',
     this.cache = const {},
     this.isConverting = false,
     this.convertError,
@@ -47,6 +50,7 @@ class ArticleDetailState {
   ConvertResult? get currentResult => cache[selectedStyle];
 
   ArticleDetailState copyWith({
+    String? articleUrl,
     String? originalContent,
     String? title,
     bool? isLoadingArticle,
@@ -56,6 +60,7 @@ class ArticleDetailState {
     String? convertError,
   }) {
     return ArticleDetailState(
+      articleUrl: articleUrl ?? this.articleUrl,
       originalContent: originalContent ?? this.originalContent,
       title: title ?? this.title,
       isLoadingArticle: isLoadingArticle ?? this.isLoadingArticle,
@@ -69,20 +74,20 @@ class ArticleDetailState {
 
 class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   final Dio _dio;
+  final ArticleRepository _repo;
   final int articleId;
 
-  ArticleDetailNotifier(this._dio, this.articleId)
+  ArticleDetailNotifier(this._dio, this._repo, this.articleId)
       : super(const ArticleDetailState()) {
     _loadArticle();
   }
 
   Future<void> _loadArticle() async {
     try {
-      final response = await _dio.get('/api/articles/$articleId');
-      final data = response.data['data'] as Map<String, dynamic>;
+      final article = await _repo.fetchArticleById(articleId);
       state = state.copyWith(
-        title: data['title'] as String?,
-        originalContent: data['originalContent'] as String?,
+        title: article.title,
+        articleUrl: article.url,
         isLoadingArticle: false,
       );
     } catch (e) {
@@ -103,10 +108,13 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   }
 
   Future<void> _convert(String style) async {
+    final url = state.articleUrl;
+    if (url == null) return;
+
     state = state.copyWith(isConverting: true, convertError: null);
     try {
       final response = await _dio.post('/api/convert', data: {
-        'articleId': articleId,
+        'url': url,
         'style': style,
       });
       final data = response.data['data'] as Map<String, dynamic>;
@@ -130,5 +138,9 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
 
 final articleDetailProvider = StateNotifierProvider.family<
     ArticleDetailNotifier, ArticleDetailState, int>(
-  (ref, articleId) => ArticleDetailNotifier(ref.watch(dioProvider), articleId),
+  (ref, articleId) => ArticleDetailNotifier(
+    ref.watch(dioProvider),
+    ref.watch(articleRepositoryProvider),
+    articleId,
+  ),
 );

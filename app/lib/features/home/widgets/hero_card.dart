@@ -20,63 +20,53 @@ class HeroCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (article.thumbnailUrl != null)
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.network(
-                  article.thumbnailUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    color: const Color(0xFFEEEEEE),
-                    child: const Icon(Icons.image_not_supported_outlined,
-                        color: Color(0xFF8E8E93)),
-                  ),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      _CategoryTag(article.category),
-                      const Spacer(),
-                      if (article.hasCardSummary) const ThirtySecBadge(),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    article.title,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                      height: 1.35,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (article.summary != null) ...[
-                    const SizedBox(height: 6),
+                  _CategoryTag(article.category),
+                  if (article.source != null) ...[
+                    const SizedBox(width: 8),
                     Text(
-                      article.summary!,
+                      article.source!,
                       style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF636366),
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                          fontSize: 11, color: Color(0xFF8E8E93)),
                     ),
                   ],
+                  const Spacer(),
+                  const ThirtySecBadge(),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                article.title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  height: 1.35,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (article.description != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  article.description!,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF636366),
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
