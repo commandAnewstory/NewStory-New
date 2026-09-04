@@ -6,7 +6,9 @@ import com.newstory.newstorybackend.domain.ai.dto.VerificationResult;
 import com.newstory.newstorybackend.domain.convert.dto.ConvertRequest;
 import com.newstory.newstorybackend.domain.convert.dto.ConvertResponse;
 import com.newstory.newstorybackend.domain.convert.dto.OriginalArticleResponse;
+import com.newstory.newstorybackend.domain.convert.entity.ConversionCache;
 import com.newstory.newstorybackend.domain.convert.entity.ConvertedResult;
+import com.newstory.newstorybackend.domain.convert.repository.ConversionCacheRepository;
 import com.newstory.newstorybackend.domain.convert.repository.ConvertedResultRepository;
 import com.newstory.newstorybackend.domain.crawling.dto.CrawledArticle;
 import com.newstory.newstorybackend.domain.crawling.service.CrawlingService;
@@ -34,6 +36,7 @@ public class ConvertService {
   private final ClaudeApiClient claudeApiClient;
   private final NewsArticleRepository newsArticleRepository;
   private final ConvertedResultRepository convertedResultRepository;
+  private final ConversionCacheRepository conversionCacheRepository;
 
   public OriginalArticleResponse getOriginal(String url) {
     CrawledArticle article = crawlingService.crawl(url);
@@ -60,21 +63,41 @@ public class ConvertService {
                             .title(crawled.getTitle())
                             .build()));
 
-    ConversionOutcome outcome = runConversionPipeline(crawled, request.getStyle());
+    boolean cacheHit = false;
+    ConversionCache cache =
+        conversionCacheRepository
+            .findByArticleIdAndStyle(article.getId(), request.getStyle())
+            .orElse(null);
+
+    if (cache == null) {
+      ConversionOutcome outcome = runConversionPipeline(crawled, request.getStyle());
+      cache =
+          conversionCacheRepository.save(
+              ConversionCache.builder()
+                  .article(article)
+                  .style(request.getStyle())
+                  .convertedText(outcome.convertedText)
+                  .verificationPassed(outcome.verificationPassed)
+                  .verificationMethod(outcome.verificationMethod)
+                  .retryCount(outcome.retryCount)
+                  .build());
+    } else {
+      cacheHit = true;
+    }
 
     ConvertedResult result =
         ConvertedResult.builder()
             .article(article)
             .user(user)
             .style(request.getStyle())
-            .convertedText(outcome.convertedText)
-            .verificationPassed(outcome.verificationPassed)
-            .verificationMethod(outcome.verificationMethod)
-            .retryCount(outcome.retryCount)
+            .convertedText(cache.getConvertedText())
+            .verificationPassed(cache.getVerificationPassed())
+            .verificationMethod(cache.getVerificationMethod())
+            .retryCount(cache.getRetryCount())
             .isFeed(false)
             .build();
 
-    return new ConvertResponse(convertedResultRepository.save(result));
+    return new ConvertResponse(convertedResultRepository.save(result), cacheHit);
   }
 
   @Transactional(readOnly = true)
@@ -88,7 +111,7 @@ public class ConvertService {
       throw new UnauthorizedException("접근 권한이 없습니다.");
     }
 
-    return new ConvertResponse(result);
+    return new ConvertResponse(result, false);
   }
 
   private ConversionOutcome runConversionPipeline(CrawledArticle crawled, String style) {

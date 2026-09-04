@@ -12,13 +12,15 @@ public class ConvertResponse {
   private final boolean verificationPassed;
   private final String verificationMethod;
   private final int retryCount;
+  private final boolean cachedResult;
 
-  public ConvertResponse(ConvertedResult result) {
+  public ConvertResponse(ConvertedResult result, boolean cachedResult) {
     this.id = result.getId();
     this.style = result.getStyle();
     this.convertedText = result.getConvertedText();
     this.verificationPassed = Boolean.TRUE.equals(result.getVerificationPassed());
     this.verificationMethod = result.getVerificationMethod();
     this.retryCount = result.getRetryCount();
+    this.cachedResult = cachedResult;
   }
 }
