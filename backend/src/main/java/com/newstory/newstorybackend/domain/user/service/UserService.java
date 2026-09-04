@@ -21,6 +21,9 @@ public class UserService {
     if (request.getNickname() != null) {
       user.updateNickname(request.getNickname());
     }
+    if (request.getWidgetEnabled() != null) {
+      user.updateWidgetEnabled(request.getWidgetEnabled());
+    }
     return new UserResponse(user);
   }
 }
