@@ -43,6 +43,8 @@ public class SecurityConfig {
                         "/api/auth/refresh",
                         "/api/auth/logout")
                     .permitAll()
+                    .requestMatchers("/api/auth/social/**")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/news")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/news/categories")
