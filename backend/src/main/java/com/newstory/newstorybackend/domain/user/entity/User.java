@@ -35,6 +35,17 @@ public class User {
   @Column(nullable = false, length = 50)
   private String nickname;
 
+  @Column(nullable = false, length = 20)
+  @Builder.Default
+  private String provider = "email";
+
+  @Column(name = "provider_id", length = 255)
+  private String providerId;
+
+  @Column(name = "widget_enabled", nullable = false)
+  @Builder.Default
+  private Boolean widgetEnabled = false;
+
   @Column(name = "last_glossary_level", nullable = false, length = 10)
   @Builder.Default
   private String lastGlossaryLevel = "MEDIUM";
@@ -53,5 +64,9 @@ public class User {
 
   public void updateLastGlossaryLevel(String level) {
     this.lastGlossaryLevel = level;
+  }
+
+  public void updateWidgetEnabled(boolean enabled) {
+    this.widgetEnabled = enabled;
   }
 }
