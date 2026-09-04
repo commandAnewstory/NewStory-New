@@ -1,6 +1,7 @@
 package com.newstory.newstorybackend.domain.news.controller;
 
 import com.newstory.newstorybackend.domain.news.dto.NewsItem;
+import com.newstory.newstorybackend.domain.news.dto.NewsPageResponse;
 import com.newstory.newstorybackend.domain.news.service.NewsService;
 import com.newstory.newstorybackend.global.common.ApiResponse;
 import java.util.List;
@@ -20,11 +21,16 @@ public class NewsController {
   private final NewsService newsService;
 
   @GetMapping
-  public ApiResponse<List<NewsItem>> getNews(
+  public ApiResponse<NewsPageResponse> getNews(
       @RequestParam(required = false) String category,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
     return ApiResponse.ok(newsService.getNews(category, page, size));
+  }
+
+  @GetMapping("/{id}")
+  public ApiResponse<NewsItem> getNewsById(@PathVariable Long id) {
+    return ApiResponse.ok(newsService.getNewsById(id));
   }
 
   @GetMapping("/categories")
