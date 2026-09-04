@@ -6,7 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ConversionCacheRepository extends JpaRepository<ConversionCache, Long> {
 
-  Optional<ConversionCache> findByArticleIdAndStyle(Long articleId, String style);
+  Optional<ConversionCache> findByArticleIdAndStyleAndLevel(
+      Long articleId, String style, String level);
 
-  boolean existsByArticleIdAndStyle(Long articleId, String style);
+  boolean existsByArticleIdAndStyleAndLevel(Long articleId, String style, String level);
 }

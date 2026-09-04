@@ -35,6 +35,10 @@ public class User {
   @Column(nullable = false, length = 50)
   private String nickname;
 
+  @Column(name = "last_glossary_level", nullable = false, length = 10)
+  @Builder.Default
+  private String lastGlossaryLevel = "MEDIUM";
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
@@ -45,5 +49,9 @@ public class User {
 
   public void updatePassword(String encodedPassword) {
     this.password = encodedPassword;
+  }
+
+  public void updateLastGlossaryLevel(String level) {
+    this.lastGlossaryLevel = level;
   }
 }

@@ -21,15 +21,15 @@ public class GemmaApiClient {
     this.restTemplate = restTemplate;
   }
 
-  public String convert(String content, String style) {
+  public String convert(String content, String style, String level) {
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
 
-    Map<String, String> body = Map.of("content", content, "style", style);
+    Map<String, String> body = Map.of("content", content, "style", style, "level", level);
     HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
 
     String response = restTemplate.postForObject(apiUrl, entity, String.class);
-    log.debug("Gemma 응답 수신 (style={})", style);
+    log.debug("Gemma 응답 수신 (style={}, level={})", style, level);
     return response;
   }
 }
