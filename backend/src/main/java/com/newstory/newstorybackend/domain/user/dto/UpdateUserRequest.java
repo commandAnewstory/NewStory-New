@@ -8,4 +8,6 @@ public class UpdateUserRequest {
 
   @Size(min = 1, max = 50)
   private String nickname;
+
+  private Boolean widgetEnabled;
 }
