@@ -1,0 +1,11 @@
+server:
+  port: 8090
+
+spring:
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    com.newstory: DEBUG
+    org.springframework.security: DEBUG

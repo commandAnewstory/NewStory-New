@@ -1,0 +1,33 @@
+# --- 시크릿 (절대 커밋 금지) ---
+.env
+.env.local
+**/.env
+**/.env.save
+!**/.env.example
+
+# --- Claude Code 로컬 설정 ---
+.claude/
+
+# --- 내부 작업 규칙 문서 (레포에 안 올림, 로컬/claude.ai 프로젝트에서만 관리) ---
+CLAUDE.md
+**/CLAUDE.md
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.iml
+.idea/
+
+# Spring / Gradle
+*.class
+*.jar
+.gradle/
+**/build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# OS
+.DS_Store
+Thumbs.db
