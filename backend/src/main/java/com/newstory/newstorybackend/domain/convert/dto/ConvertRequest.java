@@ -12,4 +12,7 @@ public class ConvertRequest {
   @NotBlank
   @Pattern(regexp = "fairy_tale|novel|card", message = "style은 fairy_tale, novel, card 중 하나여야 합니다.")
   private String style;
+
+  @Pattern(regexp = "LOW|MEDIUM|HIGH", message = "level은 LOW, MEDIUM, HIGH 중 하나여야 합니다.")
+  private String level;
 }
