@@ -7,6 +7,7 @@ import '../../features/convert/convert_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
 import '../../features/my/my_screen.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/article/article_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -29,6 +30,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: '/home',
               builder: (_, _) => const HomeScreen(),
+              routes: [
+                GoRoute(
+                  path: 'article/:id',
+                  builder: (_, state) => ArticleDetailScreen(
+                    articleId: int.parse(state.pathParameters['id']!),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [

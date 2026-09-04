@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'home_provider.dart';
 import 'widgets/category_chip_bar.dart';
 import 'widgets/hero_card.dart';
@@ -134,6 +135,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _navigateToDetail(int articleId) {
-    // 상세 화면은 다음 태스크에서 구현
+    context.push('/home/article/$articleId');
   }
 }
