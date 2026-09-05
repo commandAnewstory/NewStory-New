@@ -16,7 +16,7 @@ class ArticleRepository {
     final params = <String, dynamic>{'page': page, 'size': size};
     if (category != null && category != '전체') params['category'] = category;
 
-    final response = await _dio.get('/api/articles', queryParameters: params);
+    final response = await _dio.get('/api/news', queryParameters: params);
     final data = response.data['data'] as Map<String, dynamic>;
     final content = data['content'] as List<dynamic>;
     final totalPages = data['totalPages'] as int;
@@ -25,6 +25,11 @@ class ArticleRepository {
       articles: content.map((e) => Article.fromJson(e as Map<String, dynamic>)).toList(),
       totalPages: totalPages,
     );
+  }
+
+  Future<Article> fetchArticleById(int id) async {
+    final response = await _dio.get('/api/news/$id');
+    return Article.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 }
 
