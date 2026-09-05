@@ -1,6 +1,7 @@
 package com.newstory.newstorybackend.domain.news.service;
 
 import com.newstory.newstorybackend.domain.news.dto.NewsItem;
+import com.newstory.newstorybackend.domain.news.dto.NewsPageResponse;
 import com.newstory.newstorybackend.domain.news.entity.ArticleView;
 import com.newstory.newstorybackend.domain.news.entity.NewsArticle;
 import com.newstory.newstorybackend.domain.news.repository.ArticleViewRepository;
@@ -9,6 +10,7 @@ import com.newstory.newstorybackend.global.exception.NotFoundException;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -22,12 +24,21 @@ public class NewsService {
   private final ArticleViewRepository articleViewRepository;
 
   @Transactional(readOnly = true)
-  public List<NewsItem> getNews(String category, int page, int size) {
+  public NewsPageResponse getNews(String category, int page, int size) {
     PageRequest pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
-    if (category == null || category.isBlank()) {
-      return newsArticleRepository.findAll(pageable).map(NewsItem::new).toList();
-    }
-    return newsArticleRepository.findByCategory(category, pageable).map(NewsItem::new).toList();
+    Page<NewsItem> result =
+        (category == null || category.isBlank())
+            ? newsArticleRepository.findAll(pageable).map(NewsItem::new)
+            : newsArticleRepository.findByCategory(category, pageable).map(NewsItem::new);
+    return new NewsPageResponse(result);
+  }
+
+  @Transactional(readOnly = true)
+  public NewsItem getNewsById(Long id) {
+    return newsArticleRepository
+        .findById(id)
+        .map(NewsItem::new)
+        .orElseThrow(() -> new NotFoundException("기사를 찾을 수 없습니다."));
   }
 
   @Transactional(readOnly = true)
