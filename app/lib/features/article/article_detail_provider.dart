@@ -29,6 +29,7 @@ class ConvertResult {
 class ArticleDetailState {
   final String? articleUrl;
   final String? originalContent;
+  final bool isLoadingOriginal;
   final String? title;
   final bool isLoadingArticle;
   final String selectedStyle;
@@ -39,6 +40,7 @@ class ArticleDetailState {
   const ArticleDetailState({
     this.articleUrl,
     this.originalContent,
+    this.isLoadingOriginal = false,
     this.title,
     this.isLoadingArticle = true,
     this.selectedStyle = 'fairy_tale',
@@ -52,6 +54,7 @@ class ArticleDetailState {
   ArticleDetailState copyWith({
     String? articleUrl,
     String? originalContent,
+    bool? isLoadingOriginal,
     String? title,
     bool? isLoadingArticle,
     String? selectedStyle,
@@ -62,6 +65,7 @@ class ArticleDetailState {
     return ArticleDetailState(
       articleUrl: articleUrl ?? this.articleUrl,
       originalContent: originalContent ?? this.originalContent,
+      isLoadingOriginal: isLoadingOriginal ?? this.isLoadingOriginal,
       title: title ?? this.title,
       isLoadingArticle: isLoadingArticle ?? this.isLoadingArticle,
       selectedStyle: selectedStyle ?? this.selectedStyle,
@@ -90,8 +94,24 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         articleUrl: article.url,
         isLoadingArticle: false,
       );
-    } catch (e) {
+    } catch (_) {
       state = state.copyWith(isLoadingArticle: false);
+    }
+  }
+
+  Future<void> loadOriginal() async {
+    final url = state.articleUrl;
+    if (url == null || state.originalContent != null || state.isLoadingOriginal) return;
+    state = state.copyWith(isLoadingOriginal: true);
+    try {
+      final res = await _dio.get('/api/convert/original', queryParameters: {'url': url});
+      final data = res.data['data'] as Map<String, dynamic>;
+      state = state.copyWith(
+        originalContent: data['content'] as String? ?? data['title'] as String? ?? '',
+        isLoadingOriginal: false,
+      );
+    } catch (_) {
+      state = state.copyWith(isLoadingOriginal: false);
     }
   }
 
@@ -129,7 +149,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
       final newCache = Map<String, ConvertResult>.from(state.cache)
         ..[style] = result;
       state = state.copyWith(cache: newCache, isConverting: false);
-    } catch (e) {
+    } catch (_) {
       state = state.copyWith(
           isConverting: false, convertError: '변환에 실패했습니다. 다시 시도해 주세요.');
     }
