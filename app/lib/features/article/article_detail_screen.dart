@@ -47,7 +47,10 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                 if (state.selectedStyle != 'card')
                   _OriginalConvertedToggle(
                     showOriginal: _showOriginal,
-                    onToggle: (v) => setState(() => _showOriginal = v),
+                    onToggle: (v) {
+                      setState(() => _showOriginal = v);
+                      if (v) notifier.loadOriginal();
+                    },
                   ),
                 Expanded(child: _buildContent(context, state, notifier)),
               ],
@@ -60,8 +63,13 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     ArticleDetailState state,
     ArticleDetailNotifier notifier,
   ) {
-    if (_showOriginal && state.originalContent != null) {
-      return OriginalTab(text: state.originalContent!);
+    if (_showOriginal) {
+      if (state.isLoadingOriginal) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (state.originalContent != null) {
+        return OriginalTab(text: state.originalContent!);
+      }
     }
 
     if (state.isConverting) {
@@ -86,9 +94,6 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
 
     final result = state.currentResult;
     if (result == null) {
-      if (state.originalContent != null) {
-        return OriginalTab(text: state.originalContent!);
-      }
       return const SizedBox.shrink();
     }
 
