@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/router/app_router.dart';
 import 'my_provider.dart';
 
 const _menuItems = ['계정 정보', '알림 설정', '언어', '문의하기', '이용약관'];
