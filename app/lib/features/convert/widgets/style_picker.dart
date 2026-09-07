@@ -7,21 +7,21 @@ const _options = [
     label: '동화체',
     desc: '쉽고 친근하게, 아이도 이해할 수 있게',
     bg: AppColors.fairyTaleBg,
-    iconColor: AppColors.fairyTaleText,
+    icon: 'assets/icons/style_fairy_tale.png',
   ),
   (
     value: 'novel',
     label: '소설체',
     desc: '이야기처럼 몰입감 있게',
     bg: AppColors.novelBg,
-    iconColor: AppColors.novelText,
+    icon: 'assets/icons/style_novel.png',
   ),
   (
     value: 'card',
     label: '카드요약',
     desc: '핵심만 30초 컷으로',
     bg: AppColors.cardBg,
-    iconColor: AppColors.cardText,
+    icon: 'assets/icons/style_card.png',
   ),
 ];
 
@@ -59,8 +59,12 @@ class StylePicker extends StatelessWidget {
                     color: opt.bg,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: CustomPaint(
-                    painter: _StyleIconPainter(opt.value, opt.iconColor),
+                  alignment: Alignment.center,
+                  child: Image.asset(
+                    opt.icon,
+                    width: 30,
+                    height: 30,
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -103,78 +107,4 @@ class StylePicker extends StatelessWidget {
       }).toList(),
     );
   }
-}
-
-class _StyleIconPainter extends CustomPainter {
-  final String style;
-  final Color color;
-
-  _StyleIconPainter(this.style, this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.038
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final s = size.width / 24;
-    canvas.translate((size.width - 24 * s) / 2, (size.height - 24 * s) / 2);
-    canvas.scale(s, s);
-
-    switch (style) {
-      case 'fairy_tale':
-        // Book icon
-        canvas.drawPath(
-          Path()
-            ..moveTo(4, 6)
-            ..cubicTo(7, 4, 10, 5, 12, 6)
-            ..lineTo(12, 19)
-            ..cubicTo(10, 18, 7, 17, 4, 19)
-            ..close(),
-          paint,
-        );
-        canvas.drawPath(
-          Path()
-            ..moveTo(20, 6)
-            ..cubicTo(17, 4, 14, 5, 12, 6)
-            ..lineTo(12, 19)
-            ..cubicTo(14, 18, 17, 17, 20, 19)
-            ..close(),
-          paint,
-        );
-      case 'novel':
-        // Pen/quill icon
-        canvas.drawPath(
-          Path()
-            ..moveTo(4, 20)
-            ..lineTo(18, 6)
-            ..moveTo(14, 4)
-            ..lineTo(18, 4)
-            ..lineTo(20, 6)
-            ..lineTo(18, 8)
-            ..lineTo(14, 4)
-            ..close(),
-          paint,
-        );
-      case 'card':
-        // Cards icon
-        canvas.drawRRect(
-            RRect.fromRectAndRadius(
-                Rect.fromLTWH(5, 5, 12, 14), const Radius.circular(2)),
-            paint);
-        canvas.drawPath(
-          Path()
-            ..moveTo(9, 3)
-            ..lineTo(21, 3)
-            ..lineTo(21, 17),
-          paint,
-        );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_StyleIconPainter old) => old.color != color || old.style != style;
 }
