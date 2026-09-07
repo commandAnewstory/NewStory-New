@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
 
-const _categories = ['전체', '정치', '경제', '사회', '문화', 'IT'];
+const _categories = ['전체', '정치', '경제', '사회', '문화', 'IT', '국제', '스포츠'];
 
 class CategoryChipBar extends StatelessWidget {
   final String selected;
@@ -16,30 +15,37 @@ class CategoryChipBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 42,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
         itemCount: _categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final cat = _categories[index];
           final isSelected = cat == selected;
-          return ChoiceChip(
-            label: Text(cat),
-            selected: isSelected,
-            onSelected: (_) => onSelected(cat),
-            selectedColor: AppColors.primary,
-            backgroundColor: AppColors.background,
-            labelStyle: TextStyle(
-              color: isSelected ? Colors.white : AppColors.ink,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              fontSize: 13,
+          return GestureDetector(
+            onTap: () => onSelected(cat),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF3654F4) : Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF3654F4) : const Color(0xFFE7E4DE),
+                  width: 1.4,
+                ),
+              ),
+              child: Text(
+                cat,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? Colors.white : const Color(0xFF4A4D55),
+                ),
+              ),
             ),
-            side: BorderSide(
-              color: isSelected ? AppColors.primary : const Color(0xFFD1D1D6),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
           );
         },
       ),

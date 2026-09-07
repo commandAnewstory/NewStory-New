@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/router/app_router.dart';
+import '../../core/theme/app_theme.dart';
 import 'home_provider.dart';
 import 'widgets/category_chip_bar.dart';
 import 'widgets/hero_card.dart';
@@ -40,22 +42,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final state = ref.watch(homeProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'NewStory',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(),
+            CategoryChipBar(
+              selected: state.selectedCategory,
+              onSelected: (cat) =>
+                  ref.read(homeProvider.notifier).selectCategory(cat),
+            ),
+            Expanded(child: _buildBody(state)),
+          ],
         ),
-        centerTitle: false,
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          CategoryChipBar(
-            selected: state.selectedCategory,
-            onSelected: (cat) =>
-                ref.read(homeProvider.notifier).selectCategory(cat),
+          Text('NewStory', style: AppTextStyles.display(21)),
+          Row(
+            children: [
+              CustomPaint(
+                size: const Size(20, 20),
+                painter: SearchIconPainter(const Color(0xFF6B6E76)),
+              ),
+              const SizedBox(width: 16),
+              CustomPaint(
+                size: const Size(20, 20),
+                painter: BellIconPainter(const Color(0xFF6B6E76)),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Expanded(child: _buildBody(state)),
         ],
       ),
     );
@@ -97,11 +121,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SliverToBoxAdapter(
             child: HeroCard(
               article: hero,
-              onTap: () => _navigateToDetail(hero.id),
+              onTap: () => context.push('/home/article/${hero.id}'),
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('최신 뉴스', style: AppTextStyles.display(16)),
+                  const Text('더보기',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF9A9CA3))),
+                ],
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -109,16 +146,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final article = gridItems[index];
                   return ArticleGridCard(
                     article: article,
-                    onTap: () => _navigateToDetail(article.id),
+                    onTap: () => context.push('/home/article/${article.id}'),
                   );
                 },
                 childCount: gridItems.length,
               ),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.72,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.78,
               ),
             ),
           ),
@@ -132,9 +169,5 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     );
-  }
-
-  void _navigateToDetail(int articleId) {
-    context.push('/home/article/$articleId');
   }
 }

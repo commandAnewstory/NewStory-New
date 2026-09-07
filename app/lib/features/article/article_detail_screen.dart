@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/router/app_router.dart';
+import '../../core/theme/app_theme.dart';
 import 'article_detail_provider.dart';
 import 'widgets/style_segment.dart';
 import 'widgets/original_tab.dart';
@@ -18,7 +21,8 @@ class ArticleDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
-  bool _showOriginal = false;
+  // 'original' | 'fairy_tale' | 'novel' | 'card'
+  String _tab = 'fairy_tale';
 
   @override
   Widget build(BuildContext context) {
@@ -26,35 +30,63 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     final notifier = ref.read(articleDetailProvider(widget.articleId).notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          state.title ?? '',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      body: state.isLoadingArticle
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                StyleSegment(
-                  selected: state.selectedStyle,
-                  onSelected: (style) {
-                    setState(() => _showOriginal = false);
-                    notifier.selectStyle(style);
-                  },
-                ),
-                if (state.selectedStyle != 'card')
-                  _OriginalConvertedToggle(
-                    showOriginal: _showOriginal,
-                    onToggle: (v) {
-                      setState(() => _showOriginal = v);
-                      if (v) notifier.loadOriginal();
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: state.isLoadingArticle
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  _buildHeader(context, state),
+                  StyleSegment(
+                    selected: _tab,
+                    onSelected: (tab) {
+                      setState(() => _tab = tab);
+                      if (tab == 'original') {
+                        notifier.loadOriginal();
+                      } else {
+                        notifier.selectStyle(tab);
+                      }
                     },
                   ),
-                Expanded(child: _buildContent(context, state, notifier)),
-              ],
+                  Expanded(child: _buildContent(context, state, notifier)),
+                  _buildBottomBar(context),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, ArticleDetailState state) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => context.pop(),
+            child: CustomPaint(
+              size: const Size(22, 22),
+              painter: BackChevronPainter(AppColors.ink),
             ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => _share(context),
+            child: CustomPaint(
+              size: const Size(20, 20),
+              painter: ShareIconPainter(const Color(0xFF6B6E76)),
+            ),
+          ),
+          const SizedBox(width: 16),
+          GestureDetector(
+            onTap: () => _saveToBookmarks(context),
+            child: CustomPaint(
+              size: const Size(20, 20),
+              painter: BookmarkSavePainter(const Color(0xFF6B6E76)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -63,13 +95,14 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     ArticleDetailState state,
     ArticleDetailNotifier notifier,
   ) {
-    if (_showOriginal) {
+    if (_tab == 'original') {
       if (state.isLoadingOriginal) {
         return const Center(child: CircularProgressIndicator());
       }
       if (state.originalContent != null) {
         return OriginalTab(text: state.originalContent!);
       }
+      return const SizedBox.shrink();
     }
 
     if (state.isConverting) {
@@ -97,66 +130,97 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       return const SizedBox.shrink();
     }
 
-    if (state.selectedStyle == 'card') {
+    if (_tab == 'card') {
       return CardSummaryView(result: result);
     }
 
     return ConvertedTab(
-      style: state.selectedStyle,
+      style: _tab,
       result: result,
       onShowGlossary: result.glossary.isNotEmpty
           ? () => GlossarySheet.show(context, result.glossary)
           : null,
     );
   }
-}
 
-class _OriginalConvertedToggle extends StatelessWidget {
-  final bool showOriginal;
-  final ValueChanged<bool> onToggle;
+  Widget _buildBottomBar(BuildContext context) {
+    final isCard = _tab == 'card';
+    final btnColor = isCard ? const Color(0xFF14B8A6) : AppColors.primary;
 
-  const _OriginalConvertedToggle({
-    required this.showOriginal,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          20, 14, 20, 22 + MediaQuery.of(context).padding.bottom),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFECEAE4))),
+      ),
       child: Row(
         children: [
-          _Tab(label: '변환', selected: !showOriginal, onTap: () => onToggle(false)),
-          const SizedBox(width: 8),
-          _Tab(label: '원문', selected: showOriginal, onTap: () => onToggle(true)),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _saveToBookmarks(context),
+              child: Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: btnColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CustomPaint(
+                      size: const Size(17, 17),
+                      painter: BookmarkSavePainter(Colors.white),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('보관함에 저장',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: () => _share(context),
+            child: Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFECEAE4), width: 1.4),
+              ),
+              alignment: Alignment.center,
+              child: CustomPaint(
+                size: const Size(18, 18),
+                painter: ShareIconPainter(AppColors.ink),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-}
 
-class _Tab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+  void _saveToBookmarks(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('보관함 저장 기능은 곧 추가될 예정이에요'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
-  const _Tab({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-          color: selected
-              ? Theme.of(context).colorScheme.primary
-              : const Color(0xFF8E8E93),
-          decoration: selected ? TextDecoration.underline : TextDecoration.none,
-          decorationColor: Theme.of(context).colorScheme.primary,
-        ),
+  void _share(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('공유 기능은 곧 추가될 예정이에요'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
       ),
     );
   }

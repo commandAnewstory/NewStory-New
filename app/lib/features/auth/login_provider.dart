@@ -56,6 +56,33 @@ class LoginNotifier extends StateNotifier<LoginState> {
     }
   }
 
+  Future<void> loginWithEmail(String email, String password) async {
+    if (email.isEmpty || password.isEmpty) {
+      state = const LoginState(status: LoginStatus.error, errorMessage: '이메일과 비밀번호를 입력해 주세요.');
+      return;
+    }
+    state = const LoginState(status: LoginStatus.loading);
+    try {
+      final response = await _dio.post('/api/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
+      final data = response.data['data'] as Map<String, dynamic>;
+      await _auth.login(
+        data['accessToken'] as String,
+        data['refreshToken'] as String,
+      );
+      state = const LoginState(status: LoginStatus.idle);
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      state = LoginState(
+          status: LoginStatus.error,
+          errorMessage: msg ?? '로그인에 실패했습니다.');
+    } catch (_) {
+      state = const LoginState(status: LoginStatus.error, errorMessage: '로그인에 실패했습니다.');
+    }
+  }
+
   Future<void> _socialLogin(String provider, String token) async {
     final response = await _dio.post(
       '/api/auth/social/$provider',

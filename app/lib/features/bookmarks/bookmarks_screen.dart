@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/app_theme.dart';
 import 'bookmarks_provider.dart';
-import 'widgets/result_list_item.dart';
+import 'widgets/bookmark_card.dart';
 
 class BookmarksScreen extends ConsumerStatefulWidget {
   const BookmarksScreen({super.key});
@@ -11,12 +12,12 @@ class BookmarksScreen extends ConsumerStatefulWidget {
 }
 
 class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
-  int _selectedIndex = 0;
+  int _tab = 0;
 
   String _formatDate(String iso) {
     try {
       final dt = DateTime.parse(iso);
-      return '${dt.year}.${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
+      return '${dt.month}월 ${dt.day}일';
     } catch (_) {
       return iso;
     }
@@ -28,28 +29,44 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
     final notifier = ref.read(bookmarksProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('보관함',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
-        centerTitle: false,
-      ),
-      body: Column(
-        children: [
-          _SegmentControl(
-            selected: _selectedIndex,
-            onChanged: (i) => setState(() => _selectedIndex = i),
-          ),
-          Expanded(
-            child: _selectedIndex == 0
-                ? _buildBookmarks(state, notifier)
-                : _buildHistory(state, notifier),
-          ),
-        ],
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
+              child: Text('보관함', style: AppTextStyles.display(21)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Row(
+                children: [
+                  _FlatTab(
+                      label: '보관함',
+                      selected: _tab == 0,
+                      onTap: () => setState(() => _tab = 0)),
+                  const SizedBox(width: 4),
+                  _FlatTab(
+                      label: '히스토리',
+                      selected: _tab == 1,
+                      onTap: () => setState(() => _tab = 1)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _tab == 0
+                  ? _buildBookmarkGrid(state, notifier)
+                  : _buildHistoryGrid(state, notifier),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBookmarks(BookmarksState state, BookmarksNotifier notifier) {
+  Widget _buildBookmarkGrid(BookmarksState state, BookmarksNotifier notifier) {
     if (state.isLoadingBookmarks) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -58,12 +75,19 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
     }
     return RefreshIndicator(
       onRefresh: notifier.fetchBookmarks,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: GridView.builder(
+        padding: EdgeInsets.fromLTRB(
+            20, 4, 20, 100 + MediaQuery.of(context).padding.bottom),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: 0.88,
+        ),
         itemCount: state.bookmarks.length,
         itemBuilder: (context, index) {
           final item = state.bookmarks[index];
-          return ResultListItem(
+          return BookmarkCard(
             title: item.articleTitle,
             style: item.style,
             dateLabel: _formatDate(item.bookmarkedAt),
@@ -74,7 +98,7 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
     );
   }
 
-  Widget _buildHistory(BookmarksState state, BookmarksNotifier notifier) {
+  Widget _buildHistoryGrid(BookmarksState state, BookmarksNotifier notifier) {
     if (state.isLoadingHistory) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -83,12 +107,19 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
     }
     return RefreshIndicator(
       onRefresh: notifier.fetchHistory,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      child: GridView.builder(
+        padding: EdgeInsets.fromLTRB(
+            20, 4, 20, 100 + MediaQuery.of(context).padding.bottom),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 14,
+          mainAxisSpacing: 14,
+          childAspectRatio: 0.88,
+        ),
         itemCount: state.history.length,
         itemBuilder: (context, index) {
           final item = state.history[index];
-          return ResultListItem(
+          return BookmarkCard(
             title: item.articleTitle,
             style: item.style,
             dateLabel: _formatDate(item.createdAt),
@@ -100,58 +131,30 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
   }
 }
 
-class _SegmentControl extends StatelessWidget {
-  final int selected;
-  final ValueChanged<int> onChanged;
-
-  const _SegmentControl({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5EA),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.all(2),
-      child: Row(
-        children: [
-          _Tab(label: '보관함', selected: selected == 0, onTap: () => onChanged(0)),
-          _Tab(label: '히스토리', selected: selected == 1, onTap: () => onChanged(1)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
+class _FlatTab extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
-  const _Tab({required this.label, required this.selected, required this.onTap});
+  const _FlatTab({required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: selected ? const Color(0xFF17181C) : const Color(0xFF8E8E93),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF17181C) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+            color: selected ? Colors.white : const Color(0xFF9A9CA3),
           ),
         ),
       ),
@@ -166,10 +169,8 @@ class _EmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        message,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93)),
-      ),
+      child: Text(message,
+          style: const TextStyle(fontSize: 14, color: Color(0xFF8E8E93))),
     );
   }
 }
