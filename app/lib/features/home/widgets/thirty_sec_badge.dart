@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
 
 class ThirtySecBadge extends StatelessWidget {
   const ThirtySecBadge({super.key});
@@ -7,17 +6,17 @@ class ThirtySecBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.cardBg,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF14B8A6),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(
+      child: const Text(
         '30초 컷',
         style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.cardText,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
         ),
       ),
     );

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_notifier.dart';
 
 const _baseUrl = String.fromEnvironment('API_BASE_URL',
-    defaultValue: 'http://localhost:8090');
+    defaultValue: 'http://172.30.1.7:8090');
 
 Dio buildDio(Ref ref) {
   final dio = Dio(BaseOptions(

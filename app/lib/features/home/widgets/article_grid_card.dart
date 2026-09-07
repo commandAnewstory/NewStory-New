@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../article.dart';
-import '../../../core/theme/app_theme.dart';
+import 'category_colors.dart';
 
 class ArticleGridCard extends StatelessWidget {
   final Article article;
@@ -10,51 +10,91 @@ class ArticleGridCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final catColors = CategoryColors.of(article.category);
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                article.category,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.primary,
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image area
+          AspectRatio(
+            aspectRatio: 1.38,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE7E4DE)),
+                color: const Color(0xFFF0F0EC),
               ),
-              const SizedBox(height: 4),
-              Text(
-                article.title,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ink,
-                  height: 1.35,
-                ),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  const _SmallStripedBg(),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: catColors.bg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        article.category,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: catColors.text,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              if (article.source != null) ...[
-                const Spacer(),
-                Text(
-                  article.source!,
-                  style: const TextStyle(
-                      fontSize: 11, color: Color(0xFF8E8E93)),
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            article.title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF17181C),
+              height: 1.4,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
+}
+
+class _SmallStripedBg extends StatelessWidget {
+  const _SmallStripedBg();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(child: CustomPaint(painter: _SmallStripePainter()));
+  }
+}
+
+class _SmallStripePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p1 = Paint()..color = const Color(0xFFF0F0EC);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), p1);
+    final p2 = Paint()
+      ..color = const Color(0xFFF7F7F4)
+      ..strokeWidth = 8
+      ..style = PaintingStyle.stroke;
+    const gap = 16.0;
+    for (double x = -size.height; x < size.width + size.height; x += gap) {
+      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), p2);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
 }

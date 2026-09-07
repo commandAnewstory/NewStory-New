@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../features/home/widgets/thirty_sec_badge.dart';
 import '../article_detail_provider.dart';
 
 class CardSummaryView extends StatelessWidget {
@@ -14,57 +13,68 @@ class CardSummaryView extends StatelessWidget {
         .split('\n')
         .map((l) => l.trim())
         .where((l) => l.isNotEmpty)
+        .map((l) => l.replaceFirst(RegExp(r'^[•·\-\d\.]+\s*'), ''))
+        .where((l) => l.isNotEmpty)
         .toList();
 
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 110),
+      child: Column(
+        children: lines.asMap().entries.map((entry) {
+          final i = entry.key;
+          final text = entry.value;
+          return _CardPoint(index: i + 1, text: text);
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _CardPoint extends StatelessWidget {
+  final int index;
+  final String text;
+
+  const _CardPoint({required this.index, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      color: AppColors.cardBg,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (result.readingTimeLabel != null)
-                  Text(
-                    result.readingTimeLabel!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.cardText,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                const Spacer(),
-                const ThirtySecBadge(),
-              ],
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFF2F0EA))),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.cardBg,
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 16),
-            ...lines.map(
-              (line) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4, right: 10),
-                      child: Icon(Icons.circle, size: 7, color: AppColors.cardText),
-                    ),
-                    Expanded(
-                      child: Text(
-                        line.replaceFirst(RegExp(r'^[•·\-]\s*'), ''),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          height: 1.6,
-                          color: AppColors.cardText,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+            alignment: Alignment.center,
+            child: Text(
+              '$index',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.cardText,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.6,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
