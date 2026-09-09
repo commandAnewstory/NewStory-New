@@ -15,11 +15,13 @@ class GlossaryItem {
 }
 
 class ConvertResult {
+  final int? resultId;
   final String convertedText;
   final List<GlossaryItem> glossary;
   final String? readingTimeLabel;
 
   const ConvertResult({
+    this.resultId,
     required this.convertedText,
     required this.glossary,
     this.readingTimeLabel,
@@ -115,19 +117,18 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
     }
   }
 
-  Future<void> selectStyle(String style) async {
-    if (state.selectedStyle == style) return;
+  Future<void> selectStyle(String style, {String level = 'MEDIUM'}) async {
     state = state.copyWith(selectedStyle: style, convertError: null);
     if (!state.cache.containsKey(style)) {
-      await _convert(style);
+      await _convert(style, level: level);
     }
   }
 
-  Future<void> retryConvert() async {
-    await _convert(state.selectedStyle);
+  Future<void> retryConvert({String level = 'MEDIUM'}) async {
+    await _convert(state.selectedStyle, level: level);
   }
 
-  Future<void> _convert(String style) async {
+  Future<void> _convert(String style, {String level = 'MEDIUM'}) async {
     final url = state.articleUrl;
     if (url == null) return;
 
@@ -136,10 +137,12 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
       final response = await _dio.post('/api/convert', data: {
         'url': url,
         'style': style,
+        'level': level,
       });
       final data = response.data['data'] as Map<String, dynamic>;
       final glossaryRaw = data['glossary'] as List<dynamic>? ?? [];
       final result = ConvertResult(
+        resultId: data['id'] as int?,
         convertedText: data['convertedText'] as String,
         glossary: glossaryRaw
             .map((e) => GlossaryItem.fromJson(e as Map<String, dynamic>))
