@@ -10,6 +10,12 @@ import 'widgets/converted_tab.dart';
 import 'widgets/card_summary_view.dart';
 import 'widgets/glossary_sheet.dart';
 
+const _levels = [
+  (value: 'LOW', label: '쉬움', desc: '어려운 용어를 최대한 많이 풀어드려요'),
+  (value: 'MEDIUM', label: '보통', desc: '적당히 설명해드려요'),
+  (value: 'HIGH', label: '어려움', desc: '핵심 용어만 간단히 표시해요'),
+];
+
 class ArticleDetailScreen extends ConsumerStatefulWidget {
   final int articleId;
 
@@ -21,8 +27,19 @@ class ArticleDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
-  // 'original' | 'fairy_tale' | 'novel' | 'card'
-  String _tab = 'fairy_tale';
+  // active tab: 'original' | 'fairy_tale' | 'novel' | 'card'
+  String _tab = 'original';
+  // style selected but not yet confirmed (null = no pending)
+  String? _pendingStyle;
+  String _pendingLevel = 'MEDIUM';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(articleDetailProvider(widget.articleId).notifier).loadOriginal();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,18 +56,33 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                 children: [
                   _buildHeader(context, state),
                   StyleSegment(
-                    selected: _tab,
-                    onSelected: (tab) {
-                      setState(() => _tab = tab);
-                      if (tab == 'original') {
-                        notifier.loadOriginal();
+                    selected: _pendingStyle ?? _tab,
+                    onSelected: (style) {
+                      if (style == 'original') {
+                        setState(() {
+                          _tab = 'original';
+                          _pendingStyle = null;
+                        });
                       } else {
-                        notifier.selectStyle(tab);
+                        // already converted → just switch
+                        final cached = state.cache.containsKey(style);
+                        if (cached) {
+                          setState(() {
+                            _tab = style;
+                            _pendingStyle = null;
+                          });
+                          notifier.selectStyle(style);
+                        } else {
+                          setState(() {
+                            _pendingStyle = style;
+                            _pendingLevel = 'MEDIUM';
+                          });
+                        }
                       }
                     },
                   ),
                   Expanded(child: _buildContent(context, state, notifier)),
-                  _buildBottomBar(context),
+                  _buildBottomBar(context, state, notifier),
                 ],
               ),
       ),
@@ -95,9 +127,36 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     ArticleDetailState state,
     ArticleDetailNotifier notifier,
   ) {
+    // 난이도 선택 대기 중
+    if (_pendingStyle != null) {
+      return _buildLevelPicker();
+    }
+
     if (_tab == 'original') {
-      if (state.isLoadingOriginal) {
+      if (state.isLoadingOriginal || (!state.isLoadingOriginal && state.originalContent == null && state.originalError == null)) {
         return const Center(child: CircularProgressIndicator());
+      }
+      if (state.originalError != null) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  state.originalError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3)),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => notifier.loadOriginal(),
+                  child: const Text('다시 시도'),
+                ),
+              ],
+            ),
+          ),
+        );
       }
       if (state.originalContent != null) {
         return OriginalTab(text: state.originalContent!);
@@ -114,10 +173,11 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(state.convertError!),
+            Text(state.convertError!,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3))),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: notifier.retryConvert,
+              onPressed: () => notifier.retryConvert(level: _pendingLevel),
               child: const Text('다시 시도'),
             ),
           ],
@@ -126,9 +186,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     }
 
     final result = state.currentResult;
-    if (result == null) {
-      return const SizedBox.shrink();
-    }
+    if (result == null) return const SizedBox.shrink();
 
     if (_tab == 'card') {
       return CardSummaryView(result: result);
@@ -143,7 +201,128 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     );
   }
 
-  Widget _buildBottomBar(BuildContext context) {
+  Widget _buildLevelPicker() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('난이도 선택',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF17181C))),
+          const SizedBox(height: 4),
+          const Text('용어 설명의 양을 조절해요',
+              style: TextStyle(fontSize: 13, color: Color(0xFF9A9CA3))),
+          const SizedBox(height: 20),
+          ..._levels.map((lv) {
+            final isSelected = lv.value == _pendingLevel;
+            return GestureDetector(
+              onTap: () => setState(() => _pendingLevel = lv.value),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : const Color(0xFFECEAE4),
+                    width: isSelected ? 2 : 1.4,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(lv.label,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF17181C))),
+                          const SizedBox(height: 2),
+                          Text(lv.desc,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Color(0xFF9A9CA3))),
+                        ],
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 140),
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : const Color(0xFFD8D4CC),
+                          width: 1.6,
+                        ),
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check,
+                              size: 12, color: Colors.white)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar(
+    BuildContext context,
+    ArticleDetailState state,
+    ArticleDetailNotifier notifier,
+  ) {
+    // 난이도 선택 중 → 확정 버튼
+    if (_pendingStyle != null) {
+      return Container(
+        padding: EdgeInsets.fromLTRB(
+            20, 14, 20, 22 + MediaQuery.of(context).padding.bottom),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFECEAE4))),
+        ),
+        child: GestureDetector(
+          onTap: () {
+            final style = _pendingStyle!;
+            setState(() {
+              _tab = style;
+              _pendingStyle = null;
+            });
+            notifier.selectStyle(style, level: _pendingLevel);
+          },
+          child: Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '변환 시작',
+              style: AppTextStyles.display(15).copyWith(color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // 일반 바 (원본 또는 변환 결과)
     final isCard = _tab == 'card';
     final btnColor = isCard ? const Color(0xFF14B8A6) : AppColors.primary;
 
@@ -162,7 +341,9 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
               child: Container(
                 height: 50,
                 decoration: BoxDecoration(
-                  color: btnColor,
+                  color: _tab == 'original'
+                      ? const Color(0xFFECEAE4)
+                      : btnColor,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
@@ -170,14 +351,21 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                   children: [
                     CustomPaint(
                       size: const Size(17, 17),
-                      painter: BookmarkSavePainter(Colors.white),
+                      painter: BookmarkSavePainter(
+                          _tab == 'original'
+                              ? const Color(0xFF9A9CA3)
+                              : Colors.white),
                     ),
                     const SizedBox(width: 8),
-                    const Text('보관함에 저장',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white)),
+                    Text(
+                      '보관함에 저장',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: _tab == 'original'
+                              ? const Color(0xFF9A9CA3)
+                              : Colors.white),
+                    ),
                   ],
                 ),
               ),
@@ -191,7 +379,8 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFECEAE4), width: 1.4),
+                border:
+                    Border.all(color: const Color(0xFFECEAE4), width: 1.4),
               ),
               alignment: Alignment.center,
               child: CustomPaint(

@@ -32,6 +32,7 @@ class ArticleDetailState {
   final String? articleUrl;
   final String? originalContent;
   final bool isLoadingOriginal;
+  final String? originalError;
   final String? title;
   final bool isLoadingArticle;
   final String selectedStyle;
@@ -43,6 +44,7 @@ class ArticleDetailState {
     this.articleUrl,
     this.originalContent,
     this.isLoadingOriginal = false,
+    this.originalError,
     this.title,
     this.isLoadingArticle = true,
     this.selectedStyle = 'fairy_tale',
@@ -57,6 +59,7 @@ class ArticleDetailState {
     String? articleUrl,
     String? originalContent,
     bool? isLoadingOriginal,
+    String? originalError,
     String? title,
     bool? isLoadingArticle,
     String? selectedStyle,
@@ -68,6 +71,7 @@ class ArticleDetailState {
       articleUrl: articleUrl ?? this.articleUrl,
       originalContent: originalContent ?? this.originalContent,
       isLoadingOriginal: isLoadingOriginal ?? this.isLoadingOriginal,
+      originalError: originalError,
       title: title ?? this.title,
       isLoadingArticle: isLoadingArticle ?? this.isLoadingArticle,
       selectedStyle: selectedStyle ?? this.selectedStyle,
@@ -96,6 +100,8 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         articleUrl: article.url,
         isLoadingArticle: false,
       );
+      // trigger immediately now that url is known (avoids postFrameCallback race)
+      await loadOriginal();
     } catch (_) {
       state = state.copyWith(isLoadingArticle: false);
     }
@@ -104,7 +110,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   Future<void> loadOriginal() async {
     final url = state.articleUrl;
     if (url == null || state.originalContent != null || state.isLoadingOriginal) return;
-    state = state.copyWith(isLoadingOriginal: true);
+    state = state.copyWith(isLoadingOriginal: true, originalError: null);
     try {
       final res = await _dio.get('/api/convert/original', queryParameters: {'url': url});
       final data = res.data['data'] as Map<String, dynamic>;
@@ -113,7 +119,10 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         isLoadingOriginal: false,
       );
     } catch (_) {
-      state = state.copyWith(isLoadingOriginal: false);
+      state = state.copyWith(
+        isLoadingOriginal: false,
+        originalError: '원문을 불러오지 못했어요.\n네트워크 연결을 확인하고 다시 시도해 주세요.',
+      );
     }
   }
 

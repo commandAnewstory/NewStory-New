@@ -3,13 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_notifier.dart';
 
 const _baseUrl = String.fromEnvironment('API_BASE_URL',
-    defaultValue: 'http://172.30.1.7:8090');
+    defaultValue: 'http://172.28.37.20:8090');
 
 Dio buildDio(Ref ref) {
   final dio = Dio(BaseOptions(
     baseUrl: _baseUrl,
     connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 120),
     headers: {'Content-Type': 'application/json'},
   ));
 
