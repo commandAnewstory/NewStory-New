@@ -5,8 +5,7 @@ import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import 'home_provider.dart';
 import 'widgets/category_chip_bar.dart';
-import 'widgets/hero_card.dart';
-import 'widgets/article_grid_card.dart';
+import 'widgets/article_list_tile.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -110,63 +109,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return const Center(child: Text('기사가 없습니다'));
     }
 
-    final hero = state.articles.first;
-    final gridItems = state.articles.skip(1).toList();
-
     return RefreshIndicator(
       onRefresh: () => ref.read(homeProvider.notifier).fetchInitial(),
-      child: CustomScrollView(
+      child: ListView.separated(
         controller: _scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: HeroCard(
-              article: hero,
-              onTap: () => context.push('/home/article/${hero.id}'),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('최신 뉴스', style: AppTextStyles.display(16)),
-                  const Text('더보기',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF9A9CA3))),
-                ],
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
-            sliver: SliverGrid(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  if (index >= gridItems.length) return null;
-                  final article = gridItems[index];
-                  return ArticleGridCard(
-                    article: article,
-                    onTap: () => context.push('/home/article/${article.id}'),
-                  );
-                },
-                childCount: gridItems.length,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.78,
-              ),
-            ),
-          ),
-          if (state.isLoadingMore)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-        ],
+        itemCount: state.articles.length + (state.isLoadingMore ? 1 : 0),
+        separatorBuilder: (context, i) => const Divider(
+          height: 1,
+          indent: 20,
+          endIndent: 20,
+          color: Color(0xFFF0EDE8),
+        ),
+        itemBuilder: (context, index) {
+          if (index >= state.articles.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final article = state.articles[index];
+          return ArticleListTile(
+            article: article,
+            onTap: () => context.push('/home/article/${article.id}'),
+          );
+        },
       ),
     );
   }

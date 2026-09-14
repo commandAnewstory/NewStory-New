@@ -15,10 +15,10 @@ class CategoryChipBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 42,
+      height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: _categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
@@ -28,7 +28,8 @@ class CategoryChipBar extends StatelessWidget {
             onTap: () => onSelected(cat),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFF3654F4) : Colors.white,
                 borderRadius: BorderRadius.circular(18),

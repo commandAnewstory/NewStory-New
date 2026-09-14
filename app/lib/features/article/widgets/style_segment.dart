@@ -28,10 +28,10 @@ class StyleSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _styles.length,
         separatorBuilder: (_, _) => const SizedBox(width: 6),
         itemBuilder: (context, index) {
@@ -42,7 +42,8 @@ class StyleSegment extends StatelessWidget {
             onTap: () => onSelected(value),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected ? activeC : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
