@@ -19,4 +19,9 @@ public interface NewsArticleRepository extends JpaRepository<NewsArticle, Long> 
   @Query(
       "SELECT DISTINCT a.category FROM NewsArticle a WHERE a.category IS NOT NULL ORDER BY a.category")
   List<String> findDistinctCategories();
+
+  @Query(
+      "SELECT a FROM NewsArticle a LEFT JOIN ArticleView v ON v.article = a "
+          + "GROUP BY a ORDER BY COUNT(v) DESC, a.publishedAt DESC NULLS LAST")
+  List<NewsArticle> findTopByViewCount(Pageable pageable);
 }
