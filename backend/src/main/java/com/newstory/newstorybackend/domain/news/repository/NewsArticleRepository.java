@@ -1,6 +1,7 @@
 package com.newstory.newstorybackend.domain.news.repository;
 
 import com.newstory.newstorybackend.domain.news.entity.NewsArticle;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -24,4 +25,9 @@ public interface NewsArticleRepository extends JpaRepository<NewsArticle, Long> 
       "SELECT a FROM NewsArticle a LEFT JOIN ArticleView v ON v.article = a "
           + "GROUP BY a ORDER BY COUNT(v) DESC, a.publishedAt DESC NULLS LAST")
   List<NewsArticle> findTopByViewCount(Pageable pageable);
+
+  @Query(
+      "SELECT a.id FROM NewsArticle a WHERE a.publishedAt < :cutoff "
+          + "AND NOT EXISTS (SELECT b FROM Bookmark b WHERE b.result.article = a)")
+  List<Long> findDeletableArticleIds(LocalDateTime cutoff);
 }

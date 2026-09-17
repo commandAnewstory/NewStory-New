@@ -1,6 +1,7 @@
 package com.newstory.newstorybackend.domain.news.controller;
 
 import com.newstory.newstorybackend.domain.news.repository.NewsArticleRepository;
+import com.newstory.newstorybackend.domain.news.service.ArticleCleanupService;
 import com.newstory.newstorybackend.domain.news.service.RssNewsCollector;
 import com.newstory.newstorybackend.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class NewsDebugController {
 
   private final NewsArticleRepository newsArticleRepository;
   private final RssNewsCollector rssNewsCollector;
+  private final ArticleCleanupService articleCleanupService;
 
   @GetMapping("/count")
   public ApiResponse<Long> count() {
@@ -27,5 +29,10 @@ public class NewsDebugController {
   @PostMapping("/collect")
   public ApiResponse<Integer> collect() {
     return ApiResponse.ok(rssNewsCollector.collectAll());
+  }
+
+  @PostMapping("/cleanup")
+  public ApiResponse<Integer> cleanup() {
+    return ApiResponse.ok(articleCleanupService.deleteOldUnbookmarkedArticles());
   }
 }
