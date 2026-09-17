@@ -12,6 +12,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,10 +49,8 @@ public class NewsService {
 
   @Transactional(readOnly = true)
   public List<NewsItem> getPopular(int limit) {
-    return newsArticleRepository
-        .findAll(PageRequest.of(0, limit, Sort.by("createdAt").descending()))
-        .map(NewsItem::new)
-        .toList();
+    Pageable pageable = PageRequest.of(0, limit);
+    return newsArticleRepository.findTopByViewCount(pageable).stream().map(NewsItem::new).toList();
   }
 
   @Transactional
