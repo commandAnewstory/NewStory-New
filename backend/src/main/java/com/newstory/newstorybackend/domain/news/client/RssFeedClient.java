@@ -19,8 +19,12 @@ import org.springframework.stereotype.Component;
 @Component
 public class RssFeedClient {
 
-  private static final DateTimeFormatter RFC_822 =
-      DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
+  // tried in order — +0900 numeric offset (Z), named zone GMT (z), ISO offset (X)
+  private static final List<DateTimeFormatter> DATE_FORMATTERS =
+      List.of(
+          DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
+          DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH),
+          DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss X", Locale.ENGLISH));
 
   public List<RssItem> fetch(String url, String sourceName, String category, String sourceType) {
     List<RssItem> items = new ArrayList<>();
@@ -65,12 +69,15 @@ public class RssFeedClient {
   }
 
   private LocalDateTime parseDate(String raw) {
-    if (raw == null || raw.isBlank()) return LocalDateTime.now();
-    try {
-      return ZonedDateTime.parse(raw.trim(), RFC_822).toLocalDateTime();
-    } catch (DateTimeParseException e) {
-      log.debug("pubDate 파싱 실패, 현재시각 사용: {}", raw);
-      return LocalDateTime.now();
+    if (raw == null || raw.isBlank()) return null;
+    String trimmed = raw.trim();
+    for (DateTimeFormatter fmt : DATE_FORMATTERS) {
+      try {
+        return ZonedDateTime.parse(trimmed, fmt).toLocalDateTime();
+      } catch (DateTimeParseException ignored) {
+      }
     }
+    log.warn("pubDate 파싱 실패 (모든 포맷 시도): {}", raw);
+    return null;
   }
 }
