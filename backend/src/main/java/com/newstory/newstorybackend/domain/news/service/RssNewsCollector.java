@@ -21,11 +21,39 @@ public class RssNewsCollector {
   /** RSS 소스 정의. {url, sourceName, category, sourceType} */
   private static final List<String[]> SOURCES =
       List.of(
-          new String[] {"https://www.chosun.com/arc/outboundfeeds/rss/", "조선일보", "전체", "rss"},
-          new String[] {"https://rss.joins.com/joins_news_list.xml", "중앙일보", "전체", "rss"},
-          new String[] {"https://rss.donga.com/total.xml", "동아일보", "전체", "rss"},
-          new String[] {"https://news.sbs.co.kr/news/RSS.xml", "SBS", "전체", "rss"},
-          new String[] {"https://imnews.imbc.com/rss/news/news_00.xml", "MBC", "전체", "rss"},
+          // 조선일보 — ?outputType=xml 없으면 404
+          new String[] {
+            "https://www.chosun.com/arc/outboundfeeds/rss/?outputType=xml", "조선일보", "전체", "rss"
+          },
+          // 동아일보 — 섹션별 피드로 카테고리 정확도 확보
+          new String[] {"https://rss.donga.com/politics.xml", "동아일보", "정치", "rss"},
+          new String[] {"https://rss.donga.com/economy.xml", "동아일보", "경제", "rss"},
+          new String[] {"https://rss.donga.com/society.xml", "동아일보", "사회", "rss"},
+          new String[] {"https://rss.donga.com/culture.xml", "동아일보", "문화", "rss"},
+          new String[] {"https://rss.donga.com/sports.xml", "동아일보", "스포츠", "rss"},
+          new String[] {"https://rss.donga.com/it.xml", "동아일보", "IT", "rss"},
+          // SBS — SectionRssFeed 형식으로 교체 (구 RSS.xml는 404)
+          new String[] {
+            "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER",
+            "SBS",
+            "정치",
+            "rss"
+          },
+          new String[] {
+            "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=02&plink=RSSREADER",
+            "SBS",
+            "경제",
+            "rss"
+          },
+          new String[] {
+            "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=03&plink=RSSREADER",
+            "SBS",
+            "사회",
+            "rss"
+          },
+          // 중앙일보: RSS 서비스 종료 — 제거
+          // MBC: RSS 폐지(에러 페이지 리다이렉트) — 제거
+          // Google News — 검색 쿼리 기반, 카테고리는 소스 정의에서 결정
           new String[] {
             "https://news.google.com/rss/search?q=기술+IT&hl=ko&gl=KR&ceid=KR:ko",
             "Google News",

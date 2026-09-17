@@ -64,7 +64,9 @@ public class RssFeedClient {
   }
 
   private String text(Element parent, String tag) {
-    Element el = parent.selectFirst(tag);
+    // selectFirst() fails on tags with colons (e.g. content:encoded) — colon is a CSS pseudo-class
+    // marker
+    Element el = tag.contains(":") ? parent.getElementsByTag(tag).first() : parent.selectFirst(tag);
     return el == null ? "" : el.text().trim();
   }
 
