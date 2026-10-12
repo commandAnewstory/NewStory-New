@@ -5,6 +5,8 @@ import '../auth/auth_notifier.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/convert/convert_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
+import '../../features/bookmarks/saved_result_provider.dart';
+import '../../features/bookmarks/saved_result_screen.dart';
 import '../../features/my/my_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/signup_screen.dart';
@@ -52,6 +54,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             GoRoute(
               path: '/bookmarks',
               builder: (_, _) => const BookmarksScreen(),
+              routes: [
+                GoRoute(
+                  path: 'result/:resultId',
+                  builder: (_, state) => SavedResultScreen(
+                    resultId: int.parse(state.pathParameters['resultId']!),
+                    args: state.extra as SavedResultArgs? ??
+                        const SavedResultArgs(title: '', style: ''),
+                  ),
+                ),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [

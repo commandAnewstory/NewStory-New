@@ -21,6 +21,7 @@ class BookmarkCard extends StatelessWidget {
   final String style;
   final String dateLabel;
   final VoidCallback onDelete;
+  final VoidCallback? onTap;
 
   const BookmarkCard({
     super.key,
@@ -28,6 +29,7 @@ class BookmarkCard extends StatelessWidget {
     required this.style,
     required this.dateLabel,
     required this.onDelete,
+    this.onTap,
   });
 
   @override
@@ -37,6 +39,7 @@ class BookmarkCard extends StatelessWidget {
     final label = _styleLabels[style] ?? style;
 
     return GestureDetector(
+      onTap: onTap,
       onLongPress: () async {
         final confirmed = await showDialog<bool>(
           context: context,

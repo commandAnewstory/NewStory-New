@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import 'bookmarks_provider.dart';
+import 'saved_result_provider.dart';
 import 'widgets/bookmark_card.dart';
 
 class BookmarksScreen extends ConsumerStatefulWidget {
@@ -92,6 +94,11 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
             style: item.style,
             dateLabel: _formatDate(item.bookmarkedAt),
             onDelete: () => notifier.removeBookmark(item.resultId),
+            onTap: () => context.push('/bookmarks/result/${item.resultId}',
+                extra: SavedResultArgs(
+                    title: item.articleTitle,
+                    style: item.style,
+                    articleUrl: item.articleUrl)),
           );
         },
       ),
@@ -124,6 +131,11 @@ class _BookmarksScreenState extends ConsumerState<BookmarksScreen> {
             style: item.style,
             dateLabel: _formatDate(item.createdAt),
             onDelete: () => notifier.removeHistory(item.resultId),
+            onTap: () => context.push('/bookmarks/result/${item.resultId}',
+                extra: SavedResultArgs(
+                    title: item.articleTitle,
+                    style: item.style,
+                    articleUrl: item.articleUrl)),
           );
         },
       ),
