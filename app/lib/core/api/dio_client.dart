@@ -2,12 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_notifier.dart';
 
-const _baseUrl = String.fromEnvironment('API_BASE_URL',
-    defaultValue: 'http://172.28.37.20:8090');
-
 Dio buildDio(Ref ref) {
   final dio = Dio(BaseOptions(
-    baseUrl: _baseUrl,
+    baseUrl: apiBaseUrl,
     connectTimeout: const Duration(seconds: 10),
     receiveTimeout: const Duration(seconds: 120),
     headers: {'Content-Type': 'application/json'},
@@ -41,7 +38,7 @@ class _AuthInterceptor extends Interceptor {
       try {
         final refreshToken = _ref.read(authProvider).refreshToken;
         if (refreshToken == null) {
-          await _ref.read(authProvider.notifier).logout();
+          await _ref.read(authProvider.notifier).logout(notifyServer: false);
           handler.next(err);
           return;
         }
@@ -62,7 +59,7 @@ class _AuthInterceptor extends Interceptor {
         final retryResponse = await _dio.fetch(retryOptions);
         handler.resolve(retryResponse);
       } catch (_) {
-        await _ref.read(authProvider.notifier).logout();
+        await _ref.read(authProvider.notifier).logout(notifyServer: false);
         handler.next(err);
       } finally {
         _isRefreshing = false;

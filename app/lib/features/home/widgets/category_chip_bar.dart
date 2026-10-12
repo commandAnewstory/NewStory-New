@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-const _categories = ['전체', '정치', '경제', '사회', '문화', 'IT', '국제', '스포츠'];
+// '국제'는 수집 소스가 없어 항상 빈 목록이라 제외 (2026-10-12 결정)
+const categories = ['전체', '정치', '경제', '사회', '문화', 'IT', '스포츠'];
 
 class CategoryChipBar extends StatelessWidget {
   final String selected;
@@ -19,10 +20,10 @@ class CategoryChipBar extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: _categories.length,
+        itemCount: categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final cat = _categories[index];
+          final cat = categories[index];
           final isSelected = cat == selected;
           return GestureDetector(
             onTap: () => onSelected(cat),
