@@ -9,6 +9,7 @@ class BookmarkItem {
   final String style;
   final String articleTitle;
   final String bookmarkedAt;
+  final String? articleUrl;
 
   const BookmarkItem({
     required this.bookmarkId,
@@ -16,6 +17,7 @@ class BookmarkItem {
     required this.style,
     required this.articleTitle,
     required this.bookmarkedAt,
+    this.articleUrl,
   });
 
   factory BookmarkItem.fromJson(Map<String, dynamic> json) => BookmarkItem(
@@ -24,6 +26,7 @@ class BookmarkItem {
         style: json['style'] as String,
         articleTitle: json['articleTitle'] as String,
         bookmarkedAt: json['bookmarkedAt'] as String,
+        articleUrl: json['articleUrl'] as String?,
       );
 }
 
@@ -32,12 +35,14 @@ class HistoryItem {
   final String style;
   final String articleTitle;
   final String createdAt;
+  final String? articleUrl;
 
   const HistoryItem({
     required this.resultId,
     required this.style,
     required this.articleTitle,
     required this.createdAt,
+    this.articleUrl,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) => HistoryItem(
@@ -45,6 +50,7 @@ class HistoryItem {
         style: json['style'] as String,
         articleTitle: json['articleTitle'] as String,
         createdAt: json['createdAt'] as String,
+        articleUrl: json['articleUrl'] as String?,
       );
 }
 
