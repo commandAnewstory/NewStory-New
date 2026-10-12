@@ -40,6 +40,9 @@ class ArticleDetailState {
   final bool isConverting;
   final String? convertError;
 
+  /// 레벨 선택 기본값 — 사용자가 마지막으로 고른 레벨 (서버 `lastGlossaryLevel`)
+  final String defaultLevel;
+
   const ArticleDetailState({
     this.articleUrl,
     this.originalContent,
@@ -51,6 +54,7 @@ class ArticleDetailState {
     this.cache = const {},
     this.isConverting = false,
     this.convertError,
+    this.defaultLevel = 'MEDIUM',
   });
 
   ConvertResult? get currentResult => cache[selectedStyle];
@@ -66,6 +70,7 @@ class ArticleDetailState {
     Map<String, ConvertResult>? cache,
     bool? isConverting,
     String? convertError,
+    String? defaultLevel,
   }) {
     return ArticleDetailState(
       articleUrl: articleUrl ?? this.articleUrl,
@@ -78,6 +83,7 @@ class ArticleDetailState {
       cache: cache ?? this.cache,
       isConverting: isConverting ?? this.isConverting,
       convertError: convertError,
+      defaultLevel: defaultLevel ?? this.defaultLevel,
     );
   }
 }
@@ -90,6 +96,23 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   ArticleDetailNotifier(this._dio, this._repo, this.articleId)
       : super(const ArticleDetailState()) {
     _loadArticle();
+    _loadDefaultLevel();
+  }
+
+  Future<void> _loadDefaultLevel() async {
+    try {
+      final res = await _dio.get('/api/users/me');
+      final data = res.data['data'] as Map<String, dynamic>;
+      final level = data['lastGlossaryLevel'] as String?;
+      if (level != null && mounted) state = state.copyWith(defaultLevel: level);
+    } catch (_) {}
+  }
+
+  /// 조회수 기록 — 실패해도 화면엔 영향 없음
+  Future<void> _recordView() async {
+    try {
+      await _dio.post('/api/news/$articleId/view');
+    } catch (_) {}
   }
 
   Future<void> _loadArticle() async {
@@ -100,6 +123,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         articleUrl: article.url,
         isLoadingArticle: false,
       );
+      _recordView();
       // trigger immediately now that url is known (avoids postFrameCallback race)
       await loadOriginal();
     } catch (_) {
@@ -160,7 +184,8 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
       );
       final newCache = Map<String, ConvertResult>.from(state.cache)
         ..[style] = result;
-      state = state.copyWith(cache: newCache, isConverting: false);
+      state = state.copyWith(
+          cache: newCache, isConverting: false, defaultLevel: level);
     } catch (_) {
       state = state.copyWith(
           isConverting: false, convertError: '변환에 실패했습니다. 다시 시도해 주세요.');

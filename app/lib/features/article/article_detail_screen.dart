@@ -75,7 +75,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                         } else {
                           setState(() {
                             _pendingStyle = style;
-                            _pendingLevel = 'MEDIUM';
+                            _pendingLevel = state.defaultLevel;
                           });
                         }
                       }

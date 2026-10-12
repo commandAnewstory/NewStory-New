@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import 'my_provider.dart';
 
-const _menuItems = ['계정 정보', '알림 설정', '언어', '문의하기', '이용약관'];
-
 class MyScreen extends ConsumerWidget {
   const MyScreen({super.key});
 
@@ -139,10 +137,6 @@ class _ProfileCard extends StatelessWidget {
               ],
             ),
           ),
-          CustomPaint(
-            size: const Size(16, 16),
-            painter: _ChevronPainter(const Color(0xFF9CA0A8)),
-          ),
         ],
       ),
     );
@@ -220,6 +214,7 @@ class _WidgetPromoCard extends StatelessWidget {
   }
 }
 
+/// 2026-10-12: 동작 없던 메뉴 5개(계정 정보/알림 설정/언어/문의하기/이용약관) 제거, 로그아웃만 남김
 class _MenuList extends StatelessWidget {
   final VoidCallback onLogout;
 
@@ -234,55 +229,13 @@ class _MenuList extends StatelessWidget {
         border: Border.all(color: const Color(0xFFECEAE4)),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          ..._menuItems.map((label) => _MenuItem(label: label)),
-          _MenuItem(
-            label: '로그아웃',
-            textColor: const Color(0xFFE0523F),
-            onTap: onLogout,
-            showChevron: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MenuItem extends StatelessWidget {
-  final String label;
-  final Color textColor;
-  final VoidCallback? onTap;
-  final bool showChevron;
-
-  const _MenuItem({
-    required this.label,
-    this.textColor = const Color(0xFF33353B),
-    this.onTap,
-    this.showChevron = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: Color(0xFFF2F0EA))),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-                child: Text(label,
-                    style: TextStyle(fontSize: 13, color: textColor))),
-            if (showChevron)
-              CustomPaint(
-                size: const Size(15, 15),
-                painter: _ChevronPainter(const Color(0xFFD8D4CC)),
-              ),
-          ],
+      child: GestureDetector(
+        onTap: onLogout,
+        behavior: HitTestBehavior.opaque,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Text('로그아웃',
+              style: TextStyle(fontSize: 13, color: Color(0xFFE0523F))),
         ),
       ),
     );
@@ -327,30 +280,4 @@ class _GridIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GridIconPainter old) => old.color != color;
-}
-
-class _ChevronPainter extends CustomPainter {
-  final Color color;
-  const _ChevronPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.width / 24;
-    canvas.scale(s, s);
-    canvas.drawPath(
-      Path()
-        ..moveTo(9, 6)
-        ..lineTo(15, 12)
-        ..lineTo(9, 18),
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8 / s
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ChevronPainter old) => old.color != color;
 }
