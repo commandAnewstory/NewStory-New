@@ -1,0 +1,14 @@
+# 통합 테스트 전용 프로필.
+# DB 접속 정보는 IntegrationTestSupport 의 @DynamicPropertySource 가 주입한다
+# (.env 의 SPRING_DATASOURCE_URL 이 테스트로 새어 들어와 개발 DB를 지우는 사고 방지).
+spring:
+  jpa:
+    show-sql: false
+  flyway:
+    enabled: true
+    clean-disabled: true
+
+logging:
+  level:
+    root: WARN
+    com.newstory: INFO
