@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'core/auth/auth_notifier.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widget/home_widget_platform.dart';
+import 'core/widget/home_widget_sync.dart';
 
 const _kakaoNativeAppKey = String.fromEnvironment(
   'KAKAO_NATIVE_APP_KEY',
@@ -15,6 +19,8 @@ void main() async {
   KakaoSdk.init(nativeAppKey: _kakaoNativeAppKey);
   final container = ProviderContainer();
   await container.read(authProvider.notifier).init();
+  await initHomeWidgetBackground();
+  unawaited(container.read(homeWidgetStartupSyncProvider)());
   runApp(UncontrolledProviderScope(container: container, child: const NewStoryApp()));
 }
 
