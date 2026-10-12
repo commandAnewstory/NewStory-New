@@ -309,14 +309,20 @@ class ShareIconPainter extends _StrokePainter {
 }
 
 class BookmarkSavePainter extends _StrokePainter {
-  const BookmarkSavePainter(super.color);
+  /// 저장된 상태면 채워서 그린다
+  final bool filled;
+  const BookmarkSavePainter(super.color, {this.filled = false});
+
+  @override
+  bool shouldRepaint(covariant BookmarkSavePainter old) =>
+      old.color != color || old.filled != filled;
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width / 24;
     canvas.scale(s, s);
     canvas.drawPath(
       Path()..moveTo(6, 4)..lineTo(18, 4)..lineTo(18, 20)..lineTo(12, 16)..lineTo(6, 20)..close(),
-      _p(s, sw: 1.8),
+      filled ? (_p(s, sw: 1.8)..style = PaintingStyle.fill) : _p(s, sw: 1.8),
     );
   }
 }
