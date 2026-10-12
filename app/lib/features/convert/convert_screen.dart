@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/router/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../article/article_detail_provider.dart';
 import '../article/widgets/converted_tab.dart';
 import '../article/widgets/card_summary_view.dart';
 import '../article/widgets/glossary_sheet.dart';
@@ -166,10 +168,63 @@ class ConvertScreen extends ConsumerWidget {
                                 ),
                               ),
                       ),
+                      const SizedBox(height: 12),
+                      _SaveResultButton(result: state.result!),
                     ],
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SaveResultButton extends ConsumerWidget {
+  final ConvertResult result;
+
+  const _SaveResultButton({required this.result});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = result.bookmarked;
+    return GestureDetector(
+      key: const Key('convert-bookmark-toggle'),
+      onTap: () async {
+        final messenger = ScaffoldMessenger.of(context);
+        final ok = await ref.read(convertProvider.notifier).toggleBookmark();
+        if (!ok) {
+          messenger.showSnackBar(const SnackBar(
+            content: Text('보관함 저장에 실패했어요. 다시 시도해 주세요.'),
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+      },
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: saved ? Colors.white : AppColors.primary,
+          borderRadius: BorderRadius.circular(14),
+          border: saved ? Border.all(color: AppColors.primary, width: 1.4) : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomPaint(
+              size: const Size(17, 17),
+              painter: BookmarkSavePainter(
+                  saved ? AppColors.primary : Colors.white,
+                  filled: saved),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              saved ? '저장됨' : '보관함에 저장',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: saved ? AppColors.primary : Colors.white),
             ),
           ],
         ),

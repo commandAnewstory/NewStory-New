@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/router/app_router.dart';
+import '../../core/share/share_text.dart';
 import '../../core/theme/app_theme.dart';
 import 'article_detail_provider.dart';
 import 'widgets/style_segment.dart';
@@ -103,7 +104,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () => _share(context),
+            onTap: () => _share(context, state),
             child: CustomPaint(
               size: const Size(20, 20),
               painter: ShareIconPainter(const Color(0xFF6B6E76)),
@@ -111,10 +112,15 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
           ),
           const SizedBox(width: 16),
           GestureDetector(
-            onTap: () => _saveToBookmarks(context),
+            onTap: () => _toggleBookmark(context, state),
             child: CustomPaint(
               size: const Size(20, 20),
-              painter: BookmarkSavePainter(const Color(0xFF6B6E76)),
+              painter: BookmarkSavePainter(
+                _canBookmark(state)
+                    ? (_isBookmarked(state) ? AppColors.primary : const Color(0xFF6B6E76))
+                    : const Color(0xFFD8D4CC),
+                filled: _isBookmarked(state),
+              ),
             ),
           ),
         ],
@@ -337,43 +343,54 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () => _saveToBookmarks(context),
-              child: Container(
-                height: 50,
-                decoration: BoxDecoration(
-                  color: _tab == 'original'
-                      ? const Color(0xFFECEAE4)
-                      : btnColor,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CustomPaint(
-                      size: const Size(17, 17),
-                      painter: BookmarkSavePainter(
-                          _tab == 'original'
-                              ? const Color(0xFF9A9CA3)
-                              : Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '보관함에 저장',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: _tab == 'original'
-                              ? const Color(0xFF9A9CA3)
-                              : Colors.white),
-                    ),
-                  ],
-                ),
-              ),
+              key: const Key('bookmark-toggle'),
+              onTap: () => _toggleBookmark(context, state),
+              child: Builder(builder: (context) {
+                final enabled = _canBookmark(state);
+                final saved = _isBookmarked(state);
+                final fg = !enabled
+                    ? const Color(0xFF9A9CA3)
+                    : saved
+                        ? btnColor
+                        : Colors.white;
+                return Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: !enabled
+                        ? const Color(0xFFECEAE4)
+                        : saved
+                            ? Colors.white
+                            : btnColor,
+                    borderRadius: BorderRadius.circular(14),
+                    border: saved && enabled
+                        ? Border.all(color: btnColor, width: 1.4)
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomPaint(
+                        size: const Size(17, 17),
+                        painter: BookmarkSavePainter(fg, filled: saved),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        saved ? '저장됨' : '보관함에 저장',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: fg),
+                      ),
+                    ],
+                  ),
+                );
+              }),
             ),
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: () => _share(context),
+            key: const Key('share-button'),
+            onTap: () => _share(context, state),
             child: Container(
               width: 50,
               height: 50,
@@ -394,23 +411,41 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     );
   }
 
-  void _saveToBookmarks(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('보관함 저장 기능은 곧 추가될 예정이에요'),
+  /// 변환 탭에서 변환 결과가 있을 때만 저장 가능 (원문 탭엔 저장할 결과가 없음)
+  bool _canBookmark(ArticleDetailState state) =>
+      _tab != 'original' &&
+      _pendingStyle == null &&
+      state.currentResult?.resultId != null;
+
+  bool _isBookmarked(ArticleDetailState state) =>
+      _canBookmark(state) && state.currentResult!.bookmarked;
+
+  Future<void> _toggleBookmark(
+      BuildContext context, ArticleDetailState state) async {
+    if (!_canBookmark(state) || state.isTogglingBookmark) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await ref
+        .read(articleDetailProvider(widget.articleId).notifier)
+        .toggleBookmark();
+    if (!ok) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('보관함 저장에 실패했어요. 다시 시도해 주세요.'),
         behavior: SnackBarBehavior.floating,
         duration: Duration(seconds: 2),
-      ),
-    );
+      ));
+    }
   }
 
-  void _share(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('공유 기능은 곧 추가될 예정이에요'),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
+  Future<void> _share(BuildContext context, ArticleDetailState state) async {
+    final url = state.articleUrl;
+    if (url == null) return;
+    final result = _tab == 'original' ? null : state.currentResult;
+    final text = buildShareText(
+      title: state.title ?? '',
+      url: url,
+      style: result == null ? 'original' : _tab,
+      convertedText: result?.convertedText,
     );
+    await ref.read(shareLauncherProvider)(text, subject: state.title);
   }
 }

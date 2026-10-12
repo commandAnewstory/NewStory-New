@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/bookmark/bookmark_api.dart';
 import '../home/article_repository.dart';
 
 class GlossaryItem {
@@ -19,13 +20,33 @@ class ConvertResult {
   final String convertedText;
   final List<GlossaryItem> glossary;
   final String? readingTimeLabel;
+  final bool bookmarked;
 
   const ConvertResult({
     this.resultId,
     required this.convertedText,
     required this.glossary,
     this.readingTimeLabel,
+    this.bookmarked = false,
   });
+
+  factory ConvertResult.fromJson(Map<String, dynamic> data) => ConvertResult(
+        resultId: data['id'] as int?,
+        convertedText: data['convertedText'] as String,
+        glossary: (data['glossary'] as List<dynamic>? ?? [])
+            .map((e) => GlossaryItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        readingTimeLabel: data['readingTimeLabel'] as String?,
+        bookmarked: data['bookmarked'] as bool? ?? false,
+      );
+
+  ConvertResult copyWith({bool? bookmarked}) => ConvertResult(
+        resultId: resultId,
+        convertedText: convertedText,
+        glossary: glossary,
+        readingTimeLabel: readingTimeLabel,
+        bookmarked: bookmarked ?? this.bookmarked,
+      );
 }
 
 class ArticleDetailState {
@@ -39,6 +60,9 @@ class ArticleDetailState {
   final Map<String, ConvertResult> cache;
   final bool isConverting;
   final String? convertError;
+
+  /// 보관함 저장/취소 요청 중 (연타 방지)
+  final bool isTogglingBookmark;
 
   /// 레벨 선택 기본값 — 사용자가 마지막으로 고른 레벨 (서버 `lastGlossaryLevel`)
   final String defaultLevel;
@@ -55,6 +79,7 @@ class ArticleDetailState {
     this.isConverting = false,
     this.convertError,
     this.defaultLevel = 'MEDIUM',
+    this.isTogglingBookmark = false,
   });
 
   ConvertResult? get currentResult => cache[selectedStyle];
@@ -71,6 +96,7 @@ class ArticleDetailState {
     bool? isConverting,
     String? convertError,
     String? defaultLevel,
+    bool? isTogglingBookmark,
   }) {
     return ArticleDetailState(
       articleUrl: articleUrl ?? this.articleUrl,
@@ -84,6 +110,7 @@ class ArticleDetailState {
       isConverting: isConverting ?? this.isConverting,
       convertError: convertError,
       defaultLevel: defaultLevel ?? this.defaultLevel,
+      isTogglingBookmark: isTogglingBookmark ?? this.isTogglingBookmark,
     );
   }
 }
@@ -91,9 +118,10 @@ class ArticleDetailState {
 class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   final Dio _dio;
   final ArticleRepository _repo;
+  final BookmarkApi _bookmarks;
   final int articleId;
 
-  ArticleDetailNotifier(this._dio, this._repo, this.articleId)
+  ArticleDetailNotifier(this._dio, this._repo, this._bookmarks, this.articleId)
       : super(const ArticleDetailState()) {
     _loadArticle();
     _loadDefaultLevel();
@@ -173,15 +201,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         'level': level,
       });
       final data = response.data['data'] as Map<String, dynamic>;
-      final glossaryRaw = data['glossary'] as List<dynamic>? ?? [];
-      final result = ConvertResult(
-        resultId: data['id'] as int?,
-        convertedText: data['convertedText'] as String,
-        glossary: glossaryRaw
-            .map((e) => GlossaryItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        readingTimeLabel: data['readingTimeLabel'] as String?,
-      );
+      final result = ConvertResult.fromJson(data);
       final newCache = Map<String, ConvertResult>.from(state.cache)
         ..[style] = result;
       state = state.copyWith(
@@ -191,6 +211,27 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
           isConverting: false, convertError: '변환에 실패했습니다. 다시 시도해 주세요.');
     }
   }
+
+  /// 현재 보고 있는 변환 결과의 보관함 저장 ↔ 취소. 성공하면 true.
+  /// 요청 중엔 무시하고, 실패하면 원래 상태 그대로 두고 false.
+  Future<bool> toggleBookmark() async {
+    final style = state.selectedStyle;
+    final current = state.cache[style];
+    if (current?.resultId == null || state.isTogglingBookmark) return false;
+
+    state = state.copyWith(isTogglingBookmark: true);
+    try {
+      final bookmarked = await _bookmarks.toggle(current!.resultId!,
+          currentlyBookmarked: current.bookmarked);
+      final newCache = Map<String, ConvertResult>.from(state.cache)
+        ..[style] = current.copyWith(bookmarked: bookmarked);
+      state = state.copyWith(cache: newCache, isTogglingBookmark: false);
+      return true;
+    } catch (_) {
+      state = state.copyWith(isTogglingBookmark: false);
+      return false;
+    }
+  }
 }
 
 final articleDetailProvider = StateNotifierProvider.family<
@@ -198,6 +239,7 @@ final articleDetailProvider = StateNotifierProvider.family<
   (ref, articleId) => ArticleDetailNotifier(
     ref.watch(dioProvider),
     ref.watch(articleRepositoryProvider),
+    ref.watch(bookmarkApiProvider),
     articleId,
   ),
 );

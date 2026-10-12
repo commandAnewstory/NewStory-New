@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/bookmark/bookmark_api.dart';
 
 class BookmarkItem {
   final int bookmarkId;
@@ -139,5 +140,9 @@ class BookmarksNotifier extends StateNotifier<BookmarksState> {
 
 final bookmarksProvider =
     StateNotifierProvider<BookmarksNotifier, BookmarksState>(
-  (ref) => BookmarksNotifier(ref.watch(dioProvider)),
+  (ref) {
+    // 다른 화면에서 저장/취소하면 revision이 바뀌고, 그때 목록을 새로 불러온다
+    ref.watch(bookmarksRevisionProvider);
+    return BookmarksNotifier(ref.watch(dioProvider));
+  },
 );
