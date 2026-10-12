@@ -3,8 +3,10 @@ package com.newstory.newstorybackend.domain.convert.service;
 import com.newstory.newstorybackend.domain.ai.client.ClaudeApiClient;
 import com.newstory.newstorybackend.domain.ai.client.GemmaApiClient;
 import com.newstory.newstorybackend.domain.ai.dto.VerificationResult;
+import com.newstory.newstorybackend.domain.bookmark.repository.BookmarkRepository;
 import com.newstory.newstorybackend.domain.convert.dto.ConvertRequest;
 import com.newstory.newstorybackend.domain.convert.dto.ConvertResponse;
+import com.newstory.newstorybackend.domain.convert.dto.GlossaryItem;
 import com.newstory.newstorybackend.domain.convert.dto.OriginalArticleResponse;
 import com.newstory.newstorybackend.domain.convert.entity.ConversionCache;
 import com.newstory.newstorybackend.domain.convert.entity.ConvertedResult;
@@ -42,6 +44,7 @@ public class ConvertService {
   private final ConvertedResultRepository convertedResultRepository;
   private final ConversionCacheRepository conversionCacheRepository;
   private final ConvertPersister convertPersister;
+  private final BookmarkRepository bookmarkRepository;
   private final ConcurrentHashMap<String, Object> inFlight = new ConcurrentHashMap<>();
 
   public OriginalArticleResponse getOriginal(String url) {
@@ -140,7 +143,14 @@ public class ConvertService {
       throw new UnauthorizedException("접근 권한이 없습니다.");
     }
 
-    return new ConvertResponse(result, false, List.of());
+    List<GlossaryItem> glossary =
+        conversionCacheRepository
+            .findByArticleIdAndStyleAndLevel(
+                result.getArticle().getId(), result.getStyle(), result.getLevel())
+            .map(ConversionCache::getGlossary)
+            .orElse(List.of());
+    boolean bookmarked = bookmarkRepository.existsByUserIdAndResultId(user.getId(), resultId);
+    return new ConvertResponse(result, false, glossary, bookmarked);
   }
 
   private String resolveLevel(String requestLevel, User user) {

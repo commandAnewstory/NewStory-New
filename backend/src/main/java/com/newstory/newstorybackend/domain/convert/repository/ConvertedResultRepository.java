@@ -8,7 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ConvertedResultRepository extends JpaRepository<ConvertedResult, Long> {
 
-  List<ConvertedResult> findByUserIdOrderByCreatedAtDesc(Long userId);
+  List<ConvertedResult> findByUserIdAndHiddenFromHistoryFalseOrderByViewedAtDesc(Long userId);
+
+  List<ConvertedResult> findByUserIdAndArticleIdAndStyleAndLevelOrderByViewedAtDesc(
+      Long userId, Long articleId, String style, String level);
 
   @Modifying
   @Query("DELETE FROM ConvertedResult r WHERE r.article.id IN :articleIds")

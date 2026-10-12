@@ -84,7 +84,7 @@
 |---|---|---|
 | GET `/api/convert/original` | 🟢 | 원본 크롤링, 인증 불필요 |
 | POST `/api/convert` | 🟡 | 요청에 `level`(`LOW`\|`MEDIUM`\|`HIGH`, 생략 시 사용자의 `lastGlossaryLevel` 사용) 추가. 응답 확장: `glossary`(용어-뜻풀이 배열), `readingTimeLabel`(카드요약일 때만). 요청 처리 시 `users.last_glossary_level`을 이번 `level`로 갱신. 내부적으로 캐시 확인 로직 추가 |
-| GET `/api/convert/{resultId}` | 🟢 | 변환 결과 단건 조회 |
+| GET `/api/convert/{resultId}` | 🟡 | 변환 결과 단건 조회. 응답에 `glossary`(캐시에서 채움), `bookmarked`, `level` 포함 (2026-10-12, 서브플랜 15) |
 
 `glossary` 설계: Agent A가 어려운 용어를 `{{term:용어|뜻풀이}}` 형태로 본문에 인라인 마킹. 백엔드가 파싱해 순수 텍스트 + 용어-뜻풀이 매핑 배열로 분리 응답. 오프셋 계산 없이 안정적으로 처리.
 
@@ -98,9 +98,9 @@
 ### 히스토리 / 보관함
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
-| GET `/api/history` | 🟢 | 유지 |
-| DELETE `/api/history/{resultId}` | 🟢 | 유지 |
-| GET `/api/bookmarks` | 🟢 | 유지 |
+| GET `/api/history` | 🟡 | 마지막으로 본 순서(`viewedAt`), 숨긴 항목 제외. 응답에 `articleUrl`, `level`, `viewedAt` 추가 (2026-10-12) |
+| DELETE `/api/history/{resultId}` | 🟡 | 보관함에 있는 항목이면 히스토리에서만 숨김, 아니면 삭제 (2026-10-12) |
+| GET `/api/bookmarks` | 🟡 | 응답에 `articleUrl`, `level` 추가 (2026-10-12) |
 | POST `/api/bookmarks/{resultId}` | 🟢 | 유지 |
 | DELETE `/api/bookmarks/{resultId}` | 🟢 | 유지 |
 
@@ -133,7 +133,11 @@ UNIQUE (article_id, style, level)
 ```
 캐시 키가 `(article_id, style)`에서 `(article_id, style, level)`로 바뀜 — 레벨마다 glossary 마킹 개수가 달라 같은 기사+스타일이어도 레벨별로 변환 결과가 다르기 때문. 이미 존재하던 `(article_id, style)` UNIQUE 제약은 마이그레이션에서 드롭 후 새 3-컬럼 UNIQUE로 교체.
 
-`converted_results`(사용자별 히스토리 로그)와는 별도 — 캐시는 기사+스타일+레벨 단위 전역 공유, 히스토리는 사용자별 요청 기록. `POST /api/convert`: 캐시 먼저 조회 → 있으면 AI 재호출 없이 `converted_results`에 사용자별 행만 생성 → 없으면 파이프라인 실행 후 둘 다 저장.
+`converted_results`(사용자별 히스토리 로그)와는 별도 — 캐시는 기사+스타일+레벨 단위 전역 공유, 히스토리는 사용자별 요청 기록. `POST /api/convert`: 캐시 먼저 조회(크롤링보다 먼저) → 있으면 크롤링·AI 재호출 없이 사용자별 행만 기록 → 없으면 파이프라인 실행 후 둘 다 저장. 같은 키 동시 요청은 하나로 묶어 AI 1회 호출 (2026-10-12, 서브플랜 14).
+
+**converted_results (2026-10-12, V7)**
+- `level VARCHAR(10) NOT NULL DEFAULT 'MEDIUM'`, `viewed_at TIMESTAMP NOT NULL`, `hidden_from_history BOOLEAN NOT NULL DEFAULT false` 추가
+- 같은 사용자 + 같은 기사·스타일·레벨이면 기존 행을 재사용 (히스토리 중복 방지, 보관함 저장 상태 유지). 결정 기록: `docs/01-decisions/2026-10-12-result-reuse-history-hide.md`
 
 ## 7. 알려진 버그/보안 이슈 (선행 정리 대상)
 - `ConvertService`: `verificationPassed`가 실제 검증 결과와 무관하게 항상 `true`로 저장되는 로직 오류 수정
