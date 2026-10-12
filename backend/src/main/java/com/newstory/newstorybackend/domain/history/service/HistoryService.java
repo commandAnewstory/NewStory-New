@@ -1,5 +1,6 @@
 package com.newstory.newstorybackend.domain.history.service;
 
+import com.newstory.newstorybackend.domain.bookmark.repository.BookmarkRepository;
 import com.newstory.newstorybackend.domain.convert.entity.ConvertedResult;
 import com.newstory.newstorybackend.domain.convert.repository.ConvertedResultRepository;
 import com.newstory.newstorybackend.domain.history.dto.HistoryResponse;
@@ -15,10 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class HistoryService {
 
   private final ConvertedResultRepository convertedResultRepository;
+  private final BookmarkRepository bookmarkRepository;
 
   @Transactional(readOnly = true)
   public List<HistoryResponse> getHistory(Long userId) {
-    return convertedResultRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+    return convertedResultRepository
+        .findByUserIdAndHiddenFromHistoryFalseOrderByViewedAtDesc(userId)
+        .stream()
         .map(HistoryResponse::new)
         .toList();
   }
@@ -34,6 +38,11 @@ public class HistoryService {
       throw new UnauthorizedException("접근 권한이 없습니다.");
     }
 
-    convertedResultRepository.delete(result);
+    // 보관함에 있는 항목은 행을 지우면 보관함까지 깨지므로 히스토리에서만 숨긴다 (2026-10-12 결정)
+    if (bookmarkRepository.existsByUserIdAndResultId(userId, resultId)) {
+      result.hideFromHistory();
+    } else {
+      convertedResultRepository.delete(result);
+    }
   }
 }

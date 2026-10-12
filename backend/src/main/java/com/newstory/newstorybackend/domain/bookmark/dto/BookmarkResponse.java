@@ -12,6 +12,8 @@ public class BookmarkResponse {
   private final String style;
   private final String articleTitle;
   private final LocalDateTime bookmarkedAt;
+  private final String articleUrl;
+  private final String level;
 
   public BookmarkResponse(Bookmark bookmark) {
     this.bookmarkId = bookmark.getId();
@@ -19,5 +21,7 @@ public class BookmarkResponse {
     this.style = bookmark.getResult().getStyle();
     this.articleTitle = bookmark.getResult().getArticle().getTitle();
     this.bookmarkedAt = bookmark.getCreatedAt();
+    this.articleUrl = bookmark.getResult().getArticle().getUrl();
+    this.level = bookmark.getResult().getLevel();
   }
 }

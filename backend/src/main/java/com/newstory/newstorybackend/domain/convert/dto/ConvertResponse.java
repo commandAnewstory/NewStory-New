@@ -17,9 +17,14 @@ public class ConvertResponse {
   private final boolean cachedResult;
   private final List<GlossaryItem> glossary;
   private final String readingTimeLabel;
+  private final String level;
+  private final boolean bookmarked;
 
   public ConvertResponse(
-      ConvertedResult result, boolean cachedResult, List<GlossaryItem> glossary) {
+      ConvertedResult result,
+      boolean cachedResult,
+      List<GlossaryItem> glossary,
+      boolean bookmarked) {
     this.id = result.getId();
     this.style = result.getStyle();
     this.convertedText = result.getConvertedText();
@@ -32,5 +37,7 @@ public class ConvertResponse {
         "card".equals(result.getStyle())
             ? ReadingTimeCalculator.calculate(result.getConvertedText())
             : null;
+    this.level = result.getLevel();
+    this.bookmarked = bookmarked;
   }
 }
