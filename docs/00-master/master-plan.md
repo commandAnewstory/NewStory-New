@@ -17,6 +17,7 @@
 - **프로젝트 위치**: 신규 개발(백엔드+Flutter 앱 전체)은 `~/Desktop/NewStory` 폴더에서 처음부터 새로 작성한다. 구 프로젝트 폴더(`~/Desktop/프로젝트/newspace/newstory`)는 참고 자료로만 두고 더 이상 수정하지 않는다 — 위 "재사용" 표현은 코드 방향성/설계를 재사용한다는 뜻이며, 실제 코드는 새 폴더에 새로 작성한다.
 - **배포**도 새 `NewStory` 폴더 기준으로 다시 세팅한다. 구 폴더의 배포 설정(서버/인프라/CI 등)은 참고만 하고 그대로 재사용하지 않는다.
 - **Flutter Bundle ID**: `com.newstory.app` (Android 패키지명 / iOS 번들 ID 공통, Google OAuth 클라이언트에 이미 이 값으로 등록 완료)
+- **1차 목표(2026-09-04 결정)**: Android APK를 스토어 배포 없이 직접 다운로드해서 시연 가능한 상태로 만드는 것. 웹 버전과 iOS는 이번 1차 범위에서 제외 — 후순위. 자세한 내용은 `docs/01-decisions/2026-09-04-mvp-scope.md` 참고
 
 ## 3. 확정 디자인 요약
 방향: **매거진 그리드형(B)**. 캔버스 아티팩트에 핵심 화면 7개 확정 (`newstory-mobile-home-wireframes.html`, claude.ai 아티팩트).
@@ -150,7 +151,7 @@ UNIQUE (article_id, style, level)
 4. 용어 글로서리 (Agent A 프롬프트 + ConvertResponse 확장)
 5. 소셜 로그인 (users 스키마 변경 포함)
 6. 위젯 API + 카드요약 읽기시간 배지
-7. (백엔드 완료 후) Flutter 앱 개발 착수 — 화면 7개 순서대로
+7. (백엔드 완료 후) Flutter 앱 개발 착수 — 화면 7개 순서대로. **Android 빌드 우선** (디버그/임시 서명 APK로 시연 가능한 상태가 1차 목표), iOS·웹 빌드는 이후 단계
 
 ## 9. 진행 방식
 - 각 항목 착수 전, 이 마스터 기획서를 참고해 `03-backend/`(또는 `04-app/`)에 하위 기획서 작성
