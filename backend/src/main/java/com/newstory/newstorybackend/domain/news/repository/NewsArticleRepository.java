@@ -17,6 +17,12 @@ public interface NewsArticleRepository extends JpaRepository<NewsArticle, Long> 
 
   Page<NewsArticle> findByCategory(String category, Pageable pageable);
 
+  /** 제목 부분 일치 검색. [pattern]은 이미 소문자 + 이스케이프 + 앞뒤 % 처리된 값이어야 한다. */
+  @Query(
+      "SELECT a FROM NewsArticle a WHERE LOWER(a.title) LIKE :pattern ESCAPE '\\' "
+          + "AND (:category IS NULL OR a.category = :category)")
+  Page<NewsArticle> searchByTitle(String pattern, String category, Pageable pageable);
+
   @Query(
       "SELECT DISTINCT a.category FROM NewsArticle a WHERE a.category IS NOT NULL ORDER BY a.category")
   List<String> findDistinctCategories();
