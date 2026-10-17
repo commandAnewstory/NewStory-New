@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/launch/url_opener.dart';
 import '../../core/router/app_router.dart';
 import '../../core/share/share_text.dart';
 import '../../core/theme/app_theme.dart';
@@ -58,6 +59,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                   _buildHeader(context, state),
                   StyleSegment(
                     selected: _pendingStyle ?? _tab,
+                    busy: state.converting,
                     onSelected: (style) {
                       if (style == 'original') {
                         setState(() {
@@ -65,8 +67,9 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                           _pendingStyle = null;
                         });
                       } else {
-                        // already converted → just switch
-                        final cached = state.cache.containsKey(style);
+                        // 이미 변환됐거나 생성 중이면 난이도 다시 묻지 않고 그 탭으로 이동만
+                        final cached = state.cache.containsKey(style) ||
+                            state.converting.contains(style);
                         if (cached) {
                           setState(() {
                             _tab = style;
@@ -143,26 +146,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         return const Center(child: CircularProgressIndicator());
       }
       if (state.originalError != null) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  state.originalError!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3)),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => notifier.loadOriginal(),
-                  child: const Text('다시 시도'),
-                ),
-              ],
-            ),
-          ),
-        );
+        return _errorView(state, state.originalError!, notifier.loadOriginal);
       }
       if (state.originalContent != null) {
         return OriginalTab(text: state.originalContent!);
@@ -175,20 +159,8 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     }
 
     if (state.convertError != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(state.convertError!,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3))),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => notifier.retryConvert(level: _pendingLevel),
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
+      return _errorView(
+          state, state.convertError!, () => notifier.retryConvert(level: _pendingLevel));
     }
 
     final result = state.currentResult;
@@ -204,6 +176,45 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       onShowGlossary: result.glossary.isNotEmpty
           ? () => GlossarySheet.show(context, result.glossary)
           : null,
+    );
+  }
+
+  /// 원문·변환 실패 공통 화면: 안내 문구 + 다시 시도 + 원문 사이트에서 보기(외부 브라우저)
+  Widget _errorView(ArticleDetailState state, String message, VoidCallback onRetry) {
+    final url = state.articleUrl;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3)),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  key: const Key('error-retry'),
+                  onPressed: onRetry,
+                  child: const Text('다시 시도'),
+                ),
+                if (url != null) ...[
+                  const SizedBox(width: 8),
+                  TextButton(
+                    key: const Key('open-original-site'),
+                    onPressed: () => _openOriginal(context, url),
+                    child: const Text('원문 사이트에서 보기'),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -287,6 +298,18 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         ],
       ),
     );
+  }
+
+  /// 크롤링해 온 기사 원본 링크를 외부 브라우저로 연다
+  Future<void> _openOriginal(BuildContext context, String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await ref.read(urlOpenerProvider)(url);
+    if (!opened) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('원문 링크를 열 수 없어요.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Widget _buildBottomBar(
@@ -387,6 +410,25 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
               }),
             ),
           ),
+          if (state.articleUrl != null) ...[
+            const SizedBox(width: 10),
+            GestureDetector(
+              key: const Key('open-original'),
+              onTap: () => _openOriginal(context, state.articleUrl!),
+              child: Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFECEAE4), width: 1.4),
+                ),
+                alignment: Alignment.center,
+                child: const Text('원문 보기',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink)),
+              ),
+            ),
+          ],
           const SizedBox(width: 10),
           GestureDetector(
             key: const Key('share-button'),
