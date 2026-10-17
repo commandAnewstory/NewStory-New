@@ -1,6 +1,11 @@
 package com.newstory.newstorybackend.domain.crawling.service;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.newstory.newstorybackend.domain.crawling.dto.CrawledArticle;
+import com.newstory.newstorybackend.domain.crawling.exception.ArticleContentUnavailableException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -62,6 +67,11 @@ public class CrawlingService {
   // minimum paragraph text length to consider a candidate usable
   private static final int MIN_CONTENT_LENGTH = 150;
 
+  /** Arc XP(Fusion) 기반 사이트(조선일보 등)는 본문을 HTML이 아니라 이 스크립트 변수의 JSON에 담는다. */
+  private static final String FUSION_MARKER = "Fusion.globalContent=";
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
   public CrawledArticle crawl(String url) {
     try {
       Document doc =
@@ -69,6 +79,10 @@ public class CrawlingService {
 
       String title = doc.title();
       String content = extractContent(doc, url);
+      if (content.isBlank()) {
+        log.warn("본문 추출 실패 (빈 본문) url={}", url);
+        throw new ArticleContentUnavailableException();
+      }
 
       List<String> imageUrls =
           doc.select("img[src]").stream()
@@ -78,13 +92,15 @@ public class CrawlingService {
               .toList();
 
       return new CrawledArticle(title, content, "", url, imageUrls);
+    } catch (ArticleContentUnavailableException e) {
+      throw e;
     } catch (Exception e) {
       log.error("크롤링 실패: {}", url, e);
       throw new RuntimeException("기사를 불러올 수 없습니다: " + url, e);
     }
   }
 
-  private String extractContent(Document doc, String url) {
+  String extractContent(Document doc, String url) {
     for (String selector : CANDIDATE_SELECTORS) {
       for (Element el : doc.select(selector)) {
         Optional<String> result = tryExtract(el, selector);
@@ -95,8 +111,39 @@ public class CrawlingService {
       }
     }
 
+    Optional<String> fusion = extractFusionContent(doc);
+    if (fusion.isPresent()) {
+      log.debug("크롤링 성공 (Fusion JSON) url={}", url);
+      return fusion.get();
+    }
+
     log.warn("모든 셀렉터 실패, body p 태그 fallback url={}", url);
     return fallbackExtract(doc);
+  }
+
+  /**
+   * {@code Fusion.globalContent} JSON의 content_elements 중 type=text 문단을 순서대로 모은다. 문단 안의 HTML 태그는
+   * 벗긴다.
+   */
+  Optional<String> extractFusionContent(Document doc) {
+    for (Element script : doc.select("script")) {
+      String data = script.data();
+      int at = data.indexOf(FUSION_MARKER);
+      if (at < 0) continue;
+      try (JsonParser parser = MAPPER.createParser(data.substring(at + FUSION_MARKER.length()))) {
+        JsonNode root = MAPPER.readTree(parser); // 첫 JSON 값만 읽고 뒤에 이어지는 스크립트는 무시
+        List<String> paragraphs = new ArrayList<>();
+        for (JsonNode el : root.path("content_elements")) {
+          if (!"text".equals(el.path("type").asText())) continue;
+          String text = Jsoup.parse(el.path("content").asText("")).text().trim();
+          if (!text.isEmpty() && !NOISE_TEXT.matcher(text).find()) paragraphs.add(text);
+        }
+        if (!paragraphs.isEmpty()) return Optional.of(String.join("\n\n", paragraphs));
+      } catch (Exception e) {
+        log.debug("Fusion JSON 파싱 실패: {}", e.getMessage());
+      }
+    }
+    return Optional.empty();
   }
 
   private Optional<String> tryExtract(Element el, String selector) {

@@ -3,9 +3,12 @@ package com.newstory.newstorybackend.convert;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.newstory.newstorybackend.domain.ai.dto.VerificationResult;
 import com.newstory.newstorybackend.domain.crawling.dto.CrawledArticle;
+import com.newstory.newstorybackend.domain.crawling.exception.ArticleContentUnavailableException;
 import com.newstory.newstorybackend.support.IntegrationTestSupport;
 import java.util.List;
 import java.util.Map;
@@ -57,5 +60,32 @@ class ConvertFlowTest extends IntegrationTestSupport {
     Res res = post("/api/convert", Map.of("url", URL, "style", "poem"), tokens.accessToken());
 
     assertThat(res.status()).isEqualTo(400);
+  }
+
+  @Test
+  void 본문을_못_뽑은_기사는_원문_조회가_502와_안내문구로_실패한다() {
+    String empty = "https://news.example.com/article/empty";
+    given(crawlingService.crawl(empty)).willThrow(new ArticleContentUnavailableException());
+
+    Res res = get("/api/convert/original?url=" + empty, null);
+
+    assertThat(res.status()).isEqualTo(502);
+    assertThat((String) res.json("$.message")).contains("본문을 가져오지 못했어요");
+  }
+
+  @Test
+  void 본문을_못_뽑은_기사는_변환도_AI를_부르지_않고_502() {
+    String empty = "https://news.example.com/article/empty";
+    given(crawlingService.crawl(empty)).willThrow(new ArticleContentUnavailableException());
+    Tokens tokens = signupAndLogin("empty@newstory.test");
+
+    Res res =
+        post(
+            "/api/convert",
+            Map.of("url", empty, "style", "fairy_tale", "level", "MEDIUM"),
+            tokens.accessToken());
+
+    assertThat(res.status()).isEqualTo(502);
+    verify(gemmaApiClient, never()).convert(anyString(), anyString(), anyString());
   }
 }
