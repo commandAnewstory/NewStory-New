@@ -35,7 +35,8 @@ class FakeApi implements HttpClientAdapter {
     // 응답 순서를 테스트에서 조절할 수 있게 Future도 받는다
     if (body is Future) body = await body;
     if (body is FakeError) {
-      return ResponseBody.fromString('{"success":false}', body.status,
+      return ResponseBody.fromString(
+          jsonEncode({'success': false, 'message': body.message}), body.status,
           headers: _jsonHeaders);
     }
     return ResponseBody.fromString(jsonEncode(body), 200, headers: _jsonHeaders);
@@ -51,5 +52,8 @@ class FakeApi implements HttpClientAdapter {
 
 class FakeError {
   final int status;
-  const FakeError(this.status);
+
+  /// 서버가 내려주는 실패 안내 문구 (`ApiResponse.fail(message)`)
+  final String? message;
+  const FakeError(this.status, [this.message]);
 }

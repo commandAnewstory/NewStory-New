@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/launch/url_opener.dart';
 import '../../core/router/app_router.dart';
 import '../../core/share/share_text.dart';
 import '../../core/theme/app_theme.dart';
@@ -143,26 +144,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         return const Center(child: CircularProgressIndicator());
       }
       if (state.originalError != null) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  state.originalError!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3)),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => notifier.loadOriginal(),
-                  child: const Text('다시 시도'),
-                ),
-              ],
-            ),
-          ),
-        );
+        return _errorView(state, state.originalError!, notifier.loadOriginal);
       }
       if (state.originalContent != null) {
         return OriginalTab(text: state.originalContent!);
@@ -175,20 +157,8 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
     }
 
     if (state.convertError != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(state.convertError!,
-                style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3))),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => notifier.retryConvert(level: _pendingLevel),
-              child: const Text('다시 시도'),
-            ),
-          ],
-        ),
-      );
+      return _errorView(
+          state, state.convertError!, () => notifier.retryConvert(level: _pendingLevel));
     }
 
     final result = state.currentResult;
@@ -204,6 +174,45 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       onShowGlossary: result.glossary.isNotEmpty
           ? () => GlossarySheet.show(context, result.glossary)
           : null,
+    );
+  }
+
+  /// 원문·변환 실패 공통 화면: 안내 문구 + 다시 시도 + 원문 사이트에서 보기(외부 브라우저)
+  Widget _errorView(ArticleDetailState state, String message, VoidCallback onRetry) {
+    final url = state.articleUrl;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF9A9CA3)),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  key: const Key('error-retry'),
+                  onPressed: onRetry,
+                  child: const Text('다시 시도'),
+                ),
+                if (url != null) ...[
+                  const SizedBox(width: 8),
+                  TextButton(
+                    key: const Key('open-original-site'),
+                    onPressed: () => ref.read(urlOpenerProvider)(url),
+                    child: const Text('원문 사이트에서 보기'),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -4,6 +4,8 @@ import '../../core/api/dio_client.dart';
 import '../../core/bookmark/bookmark_api.dart';
 import '../home/article_repository.dart';
 
+const contentUnavailableMessage = '기사 본문을 가져오지 못했어요. 원문 사이트에서 확인해 주세요.';
+
 class GlossaryItem {
   final String term;
   final String definition;
@@ -166,14 +168,18 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
     try {
       final res = await _dio.get('/api/convert/original', queryParameters: {'url': url});
       final data = res.data['data'] as Map<String, dynamic>;
+      final content = (data['content'] as String? ?? '').trim();
+      if (content.isEmpty) {
+        // 본문을 못 뽑은 기사 — 빈 화면 대신 안내 + 원문 사이트 버튼
+        state = state.copyWith(isLoadingOriginal: false, originalError: contentUnavailableMessage);
+        return;
+      }
+      state = state.copyWith(originalContent: content, isLoadingOriginal: false);
+    } catch (e) {
       state = state.copyWith(
-        originalContent: data['content'] as String? ?? data['title'] as String? ?? '',
         isLoadingOriginal: false,
-      );
-    } catch (_) {
-      state = state.copyWith(
-        isLoadingOriginal: false,
-        originalError: '원문을 불러오지 못했어요.\n네트워크 연결을 확인하고 다시 시도해 주세요.',
+        originalError: _serverMessageIfUnavailable(e) ??
+            '원문을 불러오지 못했어요.\n네트워크 연결을 확인하고 다시 시도해 주세요.',
       );
     }
   }
@@ -206,10 +212,21 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         ..[style] = result;
       state = state.copyWith(
           cache: newCache, isConverting: false, defaultLevel: level);
-    } catch (_) {
+    } catch (e) {
       state = state.copyWith(
-          isConverting: false, convertError: '변환에 실패했습니다. 다시 시도해 주세요.');
+          isConverting: false,
+          convertError: _serverMessageIfUnavailable(e) ?? '변환에 실패했습니다. 다시 시도해 주세요.');
     }
+  }
+
+  /// 서버가 "본문을 못 가져옴"(502)으로 실패시킨 경우 그 안내 문구. 다른 실패면 null.
+  String? _serverMessageIfUnavailable(Object e) {
+    if (e is DioException && e.response?.statusCode == 502) {
+      final body = e.response?.data;
+      final msg = body is Map ? body['message'] as String? : null;
+      return (msg == null || msg.isEmpty) ? contentUnavailableMessage : msg;
+    }
+    return null;
   }
 
   /// 현재 보고 있는 변환 결과의 보관함 저장 ↔ 취소. 성공하면 true.
