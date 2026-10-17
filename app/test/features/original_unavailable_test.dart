@@ -91,4 +91,30 @@ void main() {
     expect(find.text(_serverMsg), findsOneWidget);
     expect(find.byKey(const Key('open-original-site')), findsOneWidget);
   });
+
+  testWidgets('하단 원문 보기 버튼은 크롤링한 기사 원본 링크를 연다', (tester) async {
+    api.onJson('GET', '/api/convert/original', {'title': 't', 'content': '원문 본문'});
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open-original')));
+    await tester.pumpAndSettle();
+    expect(opened, ['https://www.chosun.com/x/']);
+  });
+
+  testWidgets('링크를 못 열면 스낵바로 알려준다', (tester) async {
+    api.onJson('GET', '/api/convert/original', {'title': 't', 'content': '원문 본문'});
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        dioProvider.overrideWithValue(api.dio()),
+        urlOpenerProvider.overrideWithValue((_) async => false),
+      ],
+      child: const MaterialApp(home: ArticleDetailScreen(articleId: 7)),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open-original')));
+    await tester.pump();
+    expect(find.text('원문 링크를 열 수 없어요.'), findsOneWidget);
+  });
 }

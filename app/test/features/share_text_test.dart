@@ -9,12 +9,13 @@ void main() {
         '기사 제목\n\n원문: $url');
   });
 
-  test('동화체·소설체는 변환문 앞 200자 + 말줄임표', () {
-    final long = '가' * 250;
+  test('동화체·소설체는 길어도 변환문 전체 (말줄임 없음)', () {
+    final long = '가' * 3000;
     final text = buildShareText(
         title: '기사 제목', url: url, style: 'novel', convertedText: long);
 
-    expect(text, '기사 제목\n\n${'가' * 200}…\n\n원문: $url');
+    expect(text, '기사 제목\n\n$long\n\n원문: $url');
+    expect(text, isNot(contains('…')));
   });
 
   test('짧은 변환문은 자르지 않는다', () {

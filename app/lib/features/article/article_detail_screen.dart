@@ -59,6 +59,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                   _buildHeader(context, state),
                   StyleSegment(
                     selected: _pendingStyle ?? _tab,
+                    busy: state.converting,
                     onSelected: (style) {
                       if (style == 'original') {
                         setState(() {
@@ -66,8 +67,9 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                           _pendingStyle = null;
                         });
                       } else {
-                        // already converted → just switch
-                        final cached = state.cache.containsKey(style);
+                        // 이미 변환됐거나 생성 중이면 난이도 다시 묻지 않고 그 탭으로 이동만
+                        final cached = state.cache.containsKey(style) ||
+                            state.converting.contains(style);
                         if (cached) {
                           setState(() {
                             _tab = style;
@@ -204,7 +206,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                   const SizedBox(width: 8),
                   TextButton(
                     key: const Key('open-original-site'),
-                    onPressed: () => ref.read(urlOpenerProvider)(url),
+                    onPressed: () => _openOriginal(context, url),
                     child: const Text('원문 사이트에서 보기'),
                   ),
                 ],
@@ -296,6 +298,18 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         ],
       ),
     );
+  }
+
+  /// 크롤링해 온 기사 원본 링크를 외부 브라우저로 연다
+  Future<void> _openOriginal(BuildContext context, String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await ref.read(urlOpenerProvider)(url);
+    if (!opened) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text('원문 링크를 열 수 없어요.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Widget _buildBottomBar(
@@ -396,6 +410,25 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
               }),
             ),
           ),
+          if (state.articleUrl != null) ...[
+            const SizedBox(width: 10),
+            GestureDetector(
+              key: const Key('open-original'),
+              onTap: () => _openOriginal(context, state.articleUrl!),
+              child: Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFECEAE4), width: 1.4),
+                ),
+                alignment: Alignment.center,
+                child: const Text('원문 보기',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink)),
+              ),
+            ),
+          ],
           const SizedBox(width: 10),
           GestureDetector(
             key: const Key('share-button'),

@@ -60,8 +60,11 @@ class ArticleDetailState {
   final bool isLoadingArticle;
   final String selectedStyle;
   final Map<String, ConvertResult> cache;
-  final bool isConverting;
-  final String? convertError;
+  /// 지금 생성 중인 스타일들. 스타일마다 따로 돌아서, 생성 중에 다른 탭을 봐도 끊기지 않는다.
+  final Set<String> converting;
+
+  /// 스타일별 마지막 생성 실패 문구
+  final Map<String, String> convertErrors;
 
   /// 보관함 저장/취소 요청 중 (연타 방지)
   final bool isTogglingBookmark;
@@ -78,13 +81,18 @@ class ArticleDetailState {
     this.isLoadingArticle = true,
     this.selectedStyle = 'fairy_tale',
     this.cache = const {},
-    this.isConverting = false,
-    this.convertError,
+    this.converting = const {},
+    this.convertErrors = const {},
     this.defaultLevel = 'MEDIUM',
     this.isTogglingBookmark = false,
   });
 
   ConvertResult? get currentResult => cache[selectedStyle];
+
+  /// 지금 보고 있는 스타일이 생성 중인지
+  bool get isConverting => converting.contains(selectedStyle);
+
+  String? get convertError => convertErrors[selectedStyle];
 
   ArticleDetailState copyWith({
     String? articleUrl,
@@ -95,8 +103,8 @@ class ArticleDetailState {
     bool? isLoadingArticle,
     String? selectedStyle,
     Map<String, ConvertResult>? cache,
-    bool? isConverting,
-    String? convertError,
+    Set<String>? converting,
+    Map<String, String>? convertErrors,
     String? defaultLevel,
     bool? isTogglingBookmark,
   }) {
@@ -109,8 +117,8 @@ class ArticleDetailState {
       isLoadingArticle: isLoadingArticle ?? this.isLoadingArticle,
       selectedStyle: selectedStyle ?? this.selectedStyle,
       cache: cache ?? this.cache,
-      isConverting: isConverting ?? this.isConverting,
-      convertError: convertError,
+      converting: converting ?? this.converting,
+      convertErrors: convertErrors ?? this.convertErrors,
       defaultLevel: defaultLevel ?? this.defaultLevel,
       isTogglingBookmark: isTogglingBookmark ?? this.isTogglingBookmark,
     );
@@ -185,8 +193,8 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   }
 
   Future<void> selectStyle(String style, {String level = 'MEDIUM'}) async {
-    state = state.copyWith(selectedStyle: style, convertError: null);
-    if (!state.cache.containsKey(style)) {
+    state = state.copyWith(selectedStyle: style);
+    if (!state.cache.containsKey(style) && !state.converting.contains(style)) {
       await _convert(style, level: level);
     }
   }
@@ -197,9 +205,12 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
 
   Future<void> _convert(String style, {String level = 'MEDIUM'}) async {
     final url = state.articleUrl;
-    if (url == null) return;
+    if (url == null || state.converting.contains(style)) return;
 
-    state = state.copyWith(isConverting: true, convertError: null);
+    state = state.copyWith(
+      converting: {...state.converting, style},
+      convertErrors: Map.of(state.convertErrors)..remove(style),
+    );
     try {
       final response = await _dio.post('/api/convert', data: {
         'url': url,
@@ -208,14 +219,20 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
       });
       final data = response.data['data'] as Map<String, dynamic>;
       final result = ConvertResult.fromJson(data);
-      final newCache = Map<String, ConvertResult>.from(state.cache)
-        ..[style] = result;
+      if (!mounted) return;
+      // await 동안 다른 스타일 생성이 끝났을 수 있으니 항상 최신 state 기준으로 합친다
       state = state.copyWith(
-          cache: newCache, isConverting: false, defaultLevel: level);
+        cache: Map.of(state.cache)..[style] = result,
+        converting: {...state.converting}..remove(style),
+        defaultLevel: level,
+      );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
-          isConverting: false,
-          convertError: _serverMessageIfUnavailable(e) ?? '변환에 실패했습니다. 다시 시도해 주세요.');
+        converting: {...state.converting}..remove(style),
+        convertErrors: Map.of(state.convertErrors)
+          ..[style] = _serverMessageIfUnavailable(e) ?? '변환에 실패했습니다. 다시 시도해 주세요.',
+      );
     }
   }
 

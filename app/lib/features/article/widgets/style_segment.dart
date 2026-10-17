@@ -19,10 +19,14 @@ class StyleSegment extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onSelected;
 
+  /// 생성 중인 스타일 — 칩 옆에 작은 점으로 표시
+  final Set<String> busy;
+
   const StyleSegment({
     super.key,
     required this.selected,
     required this.onSelected,
+    this.busy = const {},
   });
 
   @override
@@ -52,14 +56,31 @@ class StyleSegment extends StatelessWidget {
                   width: 1.3,
                 ),
               ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: isSelected ? 'DoHyeon' : null,
-                  fontSize: isSelected ? 13 : 12,
-                  color: isSelected ? Colors.white : const Color(0xFF9A9CA3),
-                  fontWeight: isSelected ? FontWeight.w400 : FontWeight.w400,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: isSelected ? 'DoHyeon' : null,
+                      fontSize: isSelected ? 13 : 12,
+                      color: isSelected ? Colors.white : const Color(0xFF9A9CA3),
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  if (busy.contains(value)) ...[
+                    const SizedBox(width: 5),
+                    Container(
+                      key: Key('busy-$value'),
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white : activeC,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           );
