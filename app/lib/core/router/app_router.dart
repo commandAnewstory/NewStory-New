@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/auth_notifier.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/search/search_screen.dart';
 import '../../features/convert/convert_screen.dart';
 import '../../features/bookmarks/bookmarks_screen.dart';
 import '../../features/bookmarks/saved_result_provider.dart';
@@ -35,6 +36,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/home',
               builder: (_, _) => const HomeScreen(),
               routes: [
+                GoRoute(
+                  path: 'search',
+                  builder: (_, _) => const SearchScreen(),
+                ),
                 GoRoute(
                   path: 'article/:id',
                   builder: (_, state) => ArticleDetailScreen(
@@ -268,26 +273,6 @@ class SearchIconPainter extends _StrokePainter {
     final p = _p(s, sw: 1.7);
     canvas.drawPath(Path()..addOval(Rect.fromCircle(center: const Offset(11, 11), radius: 7)), p);
     canvas.drawPath(Path()..moveTo(16.7, 16.7)..lineTo(21, 21), p);
-  }
-}
-
-class BellIconPainter extends _StrokePainter {
-  const BellIconPainter(super.color);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final s = size.width / 24;
-    canvas.scale(s, s);
-    final p = _p(s, sw: 1.7);
-    // bell body approximation
-    canvas.drawPath(Path()
-      ..moveTo(18, 8)
-      ..arcToPoint(const Offset(6, 8), radius: const Radius.circular(6), clockwise: false)
-      ..cubicTo(6, 12, 3, 14, 3, 17)
-      ..lineTo(21, 17)
-      ..cubicTo(21, 14, 18, 12, 18, 8), p);
-    canvas.drawPath(Path()
-      ..moveTo(13.7, 21)
-      ..arcToPoint(const Offset(10.3, 21), radius: const Radius.circular(2), clockwise: false), p);
   }
 }
 

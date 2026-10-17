@@ -66,18 +66,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text('NewStory', style: AppTextStyles.display(21)),
-          Row(
-            children: [
-              CustomPaint(
+          GestureDetector(
+            key: const Key('home-search'),
+            onTap: () => context.push('/home/search'),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: CustomPaint(
                 size: const Size(20, 20),
                 painter: SearchIconPainter(const Color(0xFF6B6E76)),
               ),
-              const SizedBox(width: 16),
-              CustomPaint(
-                size: const Size(20, 20),
-                painter: BellIconPainter(const Color(0xFF6B6E76)),
-              ),
-            ],
+            ),
           ),
         ],
       ),
