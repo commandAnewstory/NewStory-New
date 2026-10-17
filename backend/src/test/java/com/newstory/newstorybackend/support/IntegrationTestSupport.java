@@ -102,6 +102,17 @@ public abstract class IntegrationTestSupport {
     return send(HttpMethod.GET, path, null, token);
   }
 
+  /** 쿼리에 %, _ 같은 문자를 그대로 보내야 할 때: path + 쿼리를 직접 인코딩해서 넘긴다 (템플릿 확장 없음). */
+  protected Res getEncoded(String encodedPathAndQuery) {
+    return http.get()
+        .uri(java.net.URI.create("http://localhost:" + port + encodedPathAndQuery))
+        .exchange(
+            (request, response) ->
+                new Res(
+                    response.getStatusCode().value(),
+                    new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8)));
+  }
+
   protected Res post(String path, Object body, String token) {
     return send(HttpMethod.POST, path, body, token);
   }
