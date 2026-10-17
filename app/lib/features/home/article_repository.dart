@@ -12,9 +12,11 @@ class ArticleRepository {
     required int page,
     required int size,
     String? category,
+    String? keyword,
   }) async {
     final params = <String, dynamic>{'page': page, 'size': size};
     if (category != null && category != '전체') params['category'] = category;
+    if (keyword != null && keyword.trim().isNotEmpty) params['keyword'] = keyword.trim();
 
     final response = await _dio.get('/api/news', queryParameters: params);
     final data = response.data['data'] as Map<String, dynamic>;

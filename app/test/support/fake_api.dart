@@ -8,7 +8,7 @@ class FakeApi implements HttpClientAdapter {
   final Map<String, Object? Function(RequestOptions)> _routes = {};
   final List<RequestOptions> requests = [];
 
-  /// [body]가 [FakeError]면 그 상태코드로 실패시킨다.
+  /// [body]가 [FakeError]면 그 상태코드로 실패시킨다. Future를 돌려주면 그게 끝날 때 응답한다.
   void on(String method, String path, Object? Function(RequestOptions req) body) {
     _routes['${method.toUpperCase()} $path'] = body;
   }
@@ -31,7 +31,9 @@ class FakeApi implements HttpClientAdapter {
       return ResponseBody.fromString('{"success":false}', 404,
           headers: _jsonHeaders);
     }
-    final body = handler(options);
+    var body = handler(options);
+    // 응답 순서를 테스트에서 조절할 수 있게 Future도 받는다
+    if (body is Future) body = await body;
     if (body is FakeError) {
       return ResponseBody.fromString('{"success":false}', body.status,
           headers: _jsonHeaders);
