@@ -6,15 +6,20 @@ import static org.mockito.BDDMockito.given;
 
 import com.newstory.newstorybackend.domain.ai.dto.VerificationResult;
 import com.newstory.newstorybackend.domain.crawling.dto.CrawledArticle;
+import com.newstory.newstorybackend.domain.news.entity.NewsArticle;
+import com.newstory.newstorybackend.domain.news.repository.NewsArticleRepository;
 import com.newstory.newstorybackend.support.IntegrationTestSupport;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 class BookmarkHistoryFlowTest extends IntegrationTestSupport {
 
   static final String URL = "https://news.example.com/article/2";
+
+  @Autowired NewsArticleRepository newsArticleRepository;
 
   Tokens tokens;
   int resultId;
@@ -69,5 +74,23 @@ class BookmarkHistoryFlowTest extends IntegrationTestSupport {
 
     assertThat((List<?>) get("/api/bookmarks", other.accessToken()).json("$.data")).isEmpty();
     assertThat(delete("/api/bookmarks/" + resultId, other.accessToken()).status()).isEqualTo(404);
+  }
+
+  @Test
+  void 보관함과_히스토리에_기사_카테고리가_나온다_직접_변환한_기사는_null() {
+    String rssUrl = "https://news.example.com/article/rss";
+    newsArticleRepository.save(
+        NewsArticle.builder().url(rssUrl).title("RSS 경제 기사").category("경제").build());
+    given(crawlingService.crawl(rssUrl))
+        .willReturn(new CrawledArticle("RSS 경제 기사", "원문", "<p>원문</p>", rssUrl, List.of()));
+    String token = tokens.accessToken();
+    int rssResultId =
+        post("/api/convert", Map.of("url", rssUrl, "style", "card"), token).json("$.data.id");
+    post("/api/bookmarks/" + rssResultId, null, token);
+
+    Res history = get("/api/history", token);
+    assertThat((String) history.json("$.data[0].category")).isEqualTo("경제");
+    assertThat((Object) history.json("$.data[1].category")).isNull(); // 직접 변환(URL로만 들어온) 기사
+    assertThat((String) get("/api/bookmarks", token).json("$.data[0].category")).isEqualTo("경제");
   }
 }
