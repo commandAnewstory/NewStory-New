@@ -50,8 +50,9 @@ class _RecordingScheduler implements WidgetScheduler {
   }
 }
 
-Map<String, dynamic> _card(String title, [String time = '약 30초']) =>
-    {'articleId': 1, 'title': title, 'convertedText': '• a', 'readingTimeLabel': time};
+var _nextId = 1;
+Map<String, dynamic> _card(String title, [String category = '정치']) =>
+    {'articleId': _nextId++, 'title': title, 'category': category};
 
 void main() {
   late FakeApi api;
@@ -64,15 +65,15 @@ void main() {
     store = _MemoryStore();
     scheduler = _RecordingScheduler();
     service = HomeWidgetService(
-      fetchCards: todayCardsFetcher(api.dio()),
+      fetchNews: popularNewsFetcher(api.dio()),
       store: store,
       scheduler: scheduler,
     );
   });
 
   test('켜면 카드 최대 3개를 저장하고 주기 갱신을 시작한다', () async {
-    api.onJson('GET', '/api/widget/today-cards',
-        [_card('첫 기사'), _card('둘째 기사', '약 1분'), _card('셋째'), _card('넷째')]);
+    api.onJson('GET', '/api/widget/popular',
+        [_card('첫 기사'), _card('둘째 기사', '경제'), _card('셋째'), _card('넷째')]);
 
     await service.applyEnabled(true);
 
@@ -80,7 +81,8 @@ void main() {
     expect(store.values[WidgetKeys.state], WidgetStates.ok);
     expect(store.values[WidgetKeys.cardCount], 3);
     expect(store.values[WidgetKeys.title(0)], '첫 기사');
-    expect(store.values[WidgetKeys.time(1)], '약 1분');
+    expect(store.values[WidgetKeys.badge(1)], '경제');
+    expect(store.values[WidgetKeys.articleId(0)], isNotNull);
     expect(store.values[WidgetKeys.title(2)], '셋째');
     expect(store.values.containsKey(WidgetKeys.title(3)), isFalse);
     expect(scheduler.running, isTrue);
@@ -88,20 +90,20 @@ void main() {
   });
 
   test('카드가 줄면 남는 칸은 비운다', () async {
-    api.onJson('GET', '/api/widget/today-cards', [_card('a'), _card('b'), _card('c')]);
+    api.onJson('GET', '/api/widget/popular', [_card('a'), _card('b'), _card('c')]);
     await service.applyEnabled(true);
-    api.onJson('GET', '/api/widget/today-cards', [_card('새 기사')]);
+    api.onJson('GET', '/api/widget/popular', [_card('새 기사')]);
 
     await service.refresh();
 
     expect(store.values[WidgetKeys.title(0)], '새 기사');
     expect(store.values.containsKey(WidgetKeys.title(1)), isFalse);
-    expect(store.values.containsKey(WidgetKeys.time(2)), isFalse);
+    expect(store.values.containsKey(WidgetKeys.badge(2)), isFalse);
     expect(store.values[WidgetKeys.cardCount], 1);
   });
 
   test('서버에 카드요약이 없으면 empty 상태', () async {
-    api.onJson('GET', '/api/widget/today-cards', []);
+    api.onJson('GET', '/api/widget/popular', []);
 
     await service.applyEnabled(true);
 
@@ -115,7 +117,7 @@ void main() {
     expect(store.values[WidgetKeys.enabled], false);
     expect(store.values[WidgetKeys.state], WidgetStates.disabled);
     expect(scheduler.calls, ['stop']);
-    expect(api.calls('GET', '/api/widget/today-cards'), isEmpty);
+    expect(api.calls('GET', '/api/widget/popular'), isEmpty);
     expect(store.redraws, 1);
   });
 
@@ -124,13 +126,13 @@ void main() {
 
     expect(ok, isTrue);
     expect(store.values[WidgetKeys.state], WidgetStates.disabled);
-    expect(api.calls('GET', '/api/widget/today-cards'), isEmpty);
+    expect(api.calls('GET', '/api/widget/popular'), isEmpty);
   });
 
   test('불러오기 실패하면 기존 카드를 지우지 않고 false (주기 작업 재시도)', () async {
-    api.onJson('GET', '/api/widget/today-cards', [_card('어제 카드')]);
+    api.onJson('GET', '/api/widget/popular', [_card('어제 카드')]);
     await service.applyEnabled(true);
-    api.on('GET', '/api/widget/today-cards', (_) => const FakeError(500));
+    api.on('GET', '/api/widget/popular', (_) => const FakeError(500));
 
     final ok = await service.refresh();
 
@@ -150,7 +152,7 @@ void main() {
           'widgetEnabled': serverEnabled,
           'lastGlossaryLevel': 'MEDIUM',
         })
-        ..onJson('GET', '/api/widget/today-cards', [_card('오늘 카드')]);
+        ..onJson('GET', '/api/widget/popular', [_card('오늘 카드')]);
       await tester.pumpWidget(ProviderScope(
         overrides: [
           dioProvider.overrideWithValue(api.dio()),
@@ -197,7 +199,7 @@ void main() {
     test('로그인 상태면 서버 토글 값을 먼저 맞춘다 (재설치·다른 기기에서 켠 경우)', () async {
       api
         ..onJson('GET', '/api/users/me', {'id': 1, 'widgetEnabled': true})
-        ..onJson('GET', '/api/widget/today-cards', [_card('오늘 카드')]);
+        ..onJson('GET', '/api/widget/popular', [_card('오늘 카드')]);
       final container = build();
       await container.read(authProvider.notifier).login('a', 'r');
 
@@ -210,7 +212,7 @@ void main() {
 
     test('로그아웃 상태면 서버 프로필은 안 부르고 마지막 값으로 갱신', () async {
       store.values[WidgetKeys.enabled] = true;
-      api.onJson('GET', '/api/widget/today-cards', []);
+      api.onJson('GET', '/api/widget/popular', []);
       final container = build();
 
       await container.read(homeWidgetStartupSyncProvider)();

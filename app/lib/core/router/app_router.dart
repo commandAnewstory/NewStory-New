@@ -44,6 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   path: 'article/:id',
                   builder: (_, state) => ArticleDetailScreen(
                     articleId: int.parse(state.pathParameters['id']!),
+                    initialStyle: state.uri.queryParameters['style'],
                   ),
                 ),
               ],
