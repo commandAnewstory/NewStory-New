@@ -1,6 +1,7 @@
 package com.newstory.newstorybackend.domain.user.dto;
 
 import com.newstory.newstorybackend.domain.user.entity.User;
+import java.util.List;
 import lombok.Getter;
 
 @Getter
@@ -11,6 +12,7 @@ public class UserResponse {
   private final String nickname;
   private final String lastGlossaryLevel;
   private final boolean widgetEnabled;
+  private final List<String> interestCategories;
 
   public UserResponse(User user) {
     this.id = user.getId();
@@ -18,5 +20,6 @@ public class UserResponse {
     this.nickname = user.getNickname();
     this.lastGlossaryLevel = user.getLastGlossaryLevel();
     this.widgetEnabled = Boolean.TRUE.equals(user.getWidgetEnabled());
+    this.interestCategories = user.getInterestCategoryList();
   }
 }

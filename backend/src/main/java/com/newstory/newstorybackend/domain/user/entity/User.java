@@ -50,6 +50,11 @@ public class User {
   @Builder.Default
   private String lastGlossaryLevel = "MEDIUM";
 
+  /** 쉼표 구분. 빈 문자열이면 전체 카테고리 */
+  @Column(name = "interest_categories", nullable = false, length = 100)
+  @Builder.Default
+  private String interestCategories = "";
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
@@ -64,6 +69,14 @@ public class User {
 
   public void updateLastGlossaryLevel(String level) {
     this.lastGlossaryLevel = level;
+  }
+
+  public java.util.List<String> getInterestCategoryList() {
+    return InterestCategories.parse(interestCategories);
+  }
+
+  public void updateInterestCategories(java.util.List<String> categories) {
+    this.interestCategories = InterestCategories.join(categories);
   }
 
   public void updateWidgetEnabled(boolean enabled) {

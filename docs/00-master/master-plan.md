@@ -38,7 +38,7 @@
 4. **직접 변환** — URL 입력, 지원 언론사 chip, 스타일 3종 선택
 5. **로그인** — 카카오/구글 소셜 로그인 우선, 이메일은 보조
 6. **보관함** — 보관함/히스토리 세그먼트 통합
-7. **MY** — 프로필, 홈스크린 위젯 온오프 토글, 설정 메뉴
+7. **MY** — 프로필, 홈스크린 위젯 온오프 토글, 관심 카테고리 선택 (2026-10-18), 설정 메뉴
 
 ## 4. 확정 기능 백로그 (우선순위 순)
 1. 백엔드 버그/보안 선행 정리
@@ -47,7 +47,7 @@
 4. 변환 결과 캐싱
 5. 카드요약 예상 읽기 시간 배지
 6. 소셜 로그인 (카카오/구글)
-7. 홈스크린 위젯 (오늘의 카드요약 3개, 사용자 온오프)
+7. 홈스크린 위젯 (사용자 온오프) — 2026-10-18 변경: 관심 카테고리의 오늘 인기 뉴스 3개 제목, 누르면 앱에서 그 기사 카드요약을 바로 생성 (서브플랜 백엔드 18 / 앱 17)
 8. 뉴스 제목 검색 — 제목 부분 일치 + 카테고리 필터 (2026-10-16 추가, 서브플랜 백엔드 16 / 앱 14)
 
 **보류**: 연속 이슈 "다음화" 형식 이어보기 (구현 난이도 높음, 이번 범위 제외)
@@ -71,7 +71,7 @@
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
 | GET `/api/users/me` | 🟢 | 내 정보 조회 |
-| PATCH `/api/users/me` | 🟡 | `UpdateUserRequest`에 `widgetEnabled`(boolean) 필드 추가 |
+| PATCH `/api/users/me` | 🟡 | `UpdateUserRequest`에 `widgetEnabled`(boolean) 필드 추가. `interestCategories`(string[], 정치·경제·사회·문화·IT·스포츠, 그 외 400) 추가 — 응답에도 포함 (2026-10-18) |
 | GET `/api/users/me` 응답 | 🟡 | `lastGlossaryLevel`(`LOW`\|`MEDIUM`\|`HIGH`) 필드 추가 — 변환 화면 기본 선택값으로 사용 |
 
 ### 뉴스
@@ -97,7 +97,8 @@
 ### 위젯 (신규 도메인)
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
-| GET `/api/widget/today-cards` | 🔵 | 오늘의 카드요약 3개, 위젯 전용 경량 payload |
+| GET `/api/widget/today-cards` | 🔵 | 오늘의 카드요약 3개, 위젯 전용 경량 payload (2026-10-18부터 새 앱은 미사용, 옛 앱 호환용으로 유지) |
+| GET `/api/widget/popular` | 🔵 | `?categories=정치,IT` (로그인 불필요). 오늘 기사 중 오늘 조회수순 최대 3개 `{articleId, title, category}`, 모자라면 최신으로 채움. 생략 시 전체 (2026-10-18, 서브플랜 18) |
 
 ### 히스토리 / 보관함
 | 메서드/경로 | 상태 | 설명 |
@@ -120,6 +121,7 @@
 - `password` 컬럼 `NULL` 허용으로 변경 (소셜 로그인 계정은 비밀번호 없음)
 - `widget_enabled BOOLEAN NOT NULL DEFAULT false` 추가
 - `last_glossary_level VARCHAR(10) NOT NULL DEFAULT 'MEDIUM'` 추가 — 용어 글로서리 난이도 마지막 선택값
+- `interest_categories VARCHAR(100) NOT NULL DEFAULT ''` 추가 — 관심 카테고리(쉼표 구분, 빈 값 = 전체). V8, 2026-10-18
 - UNIQUE 제약 `(provider, provider_id)` 추가
 
 **신규 테이블: conversion_cache**
