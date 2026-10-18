@@ -5,11 +5,19 @@ class WidgetKeys {
   static const enabled = 'enabled';
   static const state = 'state';
   static const cardCount = 'card_count';
+
+  /// 관심 카테고리 (쉼표 구분, 빈 값 = 전체). 백그라운드 갱신이 로그인 없이 쓰려고 위젯 저장소에 둔다.
+  static const categories = 'categories';
   static String title(int i) => 'card_${i}_title';
-  static String time(int i) => 'card_${i}_time';
+
+  /// 줄 오른쪽 배지 — 기사 카테고리
+  static String badge(int i) => 'card_${i}_badge';
+
+  /// 누르면 열 기사 id (문자열로 저장 — 네이티브에서 Int/Long 구분 없이 읽으려고)
+  static String articleId(int i) => 'card_${i}_id';
 }
 
-/// 위젯에 보여줄 상태: 카드 있음 / 서버에 카드요약 없음 / MY에서 꺼짐
+/// 위젯에 보여줄 상태: 뉴스 있음 / 뉴스 없음 / MY에서 꺼짐
 class WidgetStates {
   static const ok = 'ok';
   static const empty = 'empty';
@@ -18,15 +26,18 @@ class WidgetStates {
 
 const maxWidgetCards = 3;
 
-class TodayCard {
+/// 위젯 "관심 뉴스" 한 줄 (`GET /api/widget/popular`)
+class WidgetNews {
+  final int articleId;
   final String title;
-  final String readingTimeLabel;
+  final String category;
 
-  const TodayCard({required this.title, required this.readingTimeLabel});
+  const WidgetNews({required this.articleId, required this.title, required this.category});
 
-  factory TodayCard.fromJson(Map<String, dynamic> json) => TodayCard(
+  factory WidgetNews.fromJson(Map<String, dynamic> json) => WidgetNews(
+        articleId: (json['articleId'] as num).toInt(),
         title: (json['title'] as String?) ?? '',
-        readingTimeLabel: (json['readingTimeLabel'] as String?) ?? '',
+        category: (json['category'] as String?) ?? '',
       );
 }
 
@@ -45,31 +56,40 @@ abstract class WidgetScheduler {
   Future<void> stop();
 }
 
-typedef TodayCardsFetcher = Future<List<TodayCard>> Function();
+typedef WidgetNewsFetcher = Future<List<WidgetNews>> Function(List<String> categories);
 
-/// `GET /api/widget/today-cards` — 로그인 없이 호출하는 공개 API라 인증 헤더 없는 Dio를 쓴다
-TodayCardsFetcher todayCardsFetcher(Dio dio) => () async {
-      final res = await dio.get('/api/widget/today-cards');
+/// `GET /api/widget/popular?categories=` — 로그인 없이 호출하는 공개 API라 인증 헤더 없는 Dio를 쓴다
+WidgetNewsFetcher popularNewsFetcher(Dio dio) => (categories) async {
+      final res = await dio.get('/api/widget/popular', queryParameters: {
+        if (categories.isNotEmpty) 'categories': categories.join(','),
+      });
       final list = (res.data['data'] as List?) ?? const [];
-      return list
-          .map((e) => TodayCard.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return list.map((e) => WidgetNews.fromJson(e as Map<String, dynamic>)).toList();
     };
 
 /// 위젯 데이터 갱신 로직. 플랫폼 코드와 분리해서 단위 테스트한다.
 /// 위젯 쪽 실패가 앱 동작을 막으면 안 되니까 바깥으로 예외를 던지지 않는다.
 class HomeWidgetService {
-  final TodayCardsFetcher fetchCards;
+  final WidgetNewsFetcher fetchNews;
   final WidgetStore store;
   final WidgetScheduler scheduler;
 
   HomeWidgetService({
-    required this.fetchCards,
+    required this.fetchNews,
     required this.store,
     required this.scheduler,
   });
 
-  /// MY 토글(서버 값)을 위젯에 반영. 켜면 바로 갱신하고 주기 갱신 시작, 끄면 안내 문구 + 주기 갱신 중단.
+  /// 서버 프로필 값(위젯 토글 + 관심 카테고리)을 위젯에 반영.
+  /// 켜져 있으면 바로 갱신하고 주기 갱신 시작, 꺼져 있으면 안내 문구 + 주기 갱신 중단.
+  Future<void> applyProfile({required bool enabled, required List<String> categories}) async {
+    try {
+      await store.save<String>(WidgetKeys.categories, categories.join(','));
+      await applyEnabled(enabled);
+    } catch (_) {}
+  }
+
+  /// MY 토글만 바뀌었을 때
   Future<void> applyEnabled(bool enabled) async {
     try {
       await store.save<bool>(WidgetKeys.enabled, enabled);
@@ -84,7 +104,15 @@ class HomeWidgetService {
     } catch (_) {}
   }
 
-  /// 앱 시작·주기 작업에서 호출. 마지막으로 반영된 토글 값 기준으로 갱신한다.
+  /// 관심 카테고리만 바뀌었을 때 — 위젯이 켜져 있으면 바로 다시 불러온다
+  Future<void> applyCategories(List<String> categories) async {
+    try {
+      await store.save<String>(WidgetKeys.categories, categories.join(','));
+      if (await store.read<bool>(WidgetKeys.enabled) ?? false) await _fetchAndSave();
+    } catch (_) {}
+  }
+
+  /// 앱 시작·주기 작업에서 호출. 마지막으로 반영된 토글·카테고리 기준으로 갱신한다.
   /// 반환값 false = 네트워크 실패 (주기 작업이 나중에 다시 시도하게)
   Future<bool> refresh() async {
     try {
@@ -100,23 +128,41 @@ class HomeWidgetService {
     }
   }
 
-  /// 불러오기 실패 시엔 위젯에 이미 있는 카드를 그대로 둔다 (빈 화면으로 덮지 않음)
+  Future<List<String>> _storedCategories() async {
+    final csv = await store.read<String>(WidgetKeys.categories) ?? '';
+    return csv.split(',').map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
+  }
+
+  /// 불러오기 실패 시엔 위젯에 이미 있는 뉴스를 그대로 둔다 (빈 화면으로 덮지 않음)
   Future<bool> _fetchAndSave() async {
-    final List<TodayCard> cards;
+    final List<WidgetNews> news;
     try {
-      cards = (await fetchCards()).take(maxWidgetCards).toList();
+      news = (await fetchNews(await _storedCategories())).take(maxWidgetCards).toList();
     } catch (_) {
       return false;
     }
     for (var i = 0; i < maxWidgetCards; i++) {
-      final card = i < cards.length ? cards[i] : null;
-      await store.save<String>(WidgetKeys.title(i), card?.title);
-      await store.save<String>(WidgetKeys.time(i), card?.readingTimeLabel);
+      final item = i < news.length ? news[i] : null;
+      await store.save<String>(WidgetKeys.title(i), item?.title);
+      await store.save<String>(WidgetKeys.badge(i), item?.category);
+      await store.save<String>(WidgetKeys.articleId(i), item?.articleId.toString());
     }
-    await store.save<int>(WidgetKeys.cardCount, cards.length);
+    await store.save<int>(WidgetKeys.cardCount, news.length);
     await store.save<String>(
-        WidgetKeys.state, cards.isEmpty ? WidgetStates.empty : WidgetStates.ok);
+        WidgetKeys.state, news.isEmpty ? WidgetStates.empty : WidgetStates.ok);
     await store.redraw();
     return true;
   }
+}
+
+/// 위젯 줄을 눌러 앱이 열렸을 때의 링크 → 앱 화면 경로.
+/// `newstory://article/7?style=card` → `/home/article/7?style=card`. 모르는 링크면 null(앱만 열기).
+String? widgetUriToLocation(Uri? uri) {
+  if (uri == null || uri.scheme != 'newstory' || uri.host != 'article') return null;
+  if (uri.pathSegments.length != 1) return null;
+  final id = int.tryParse(uri.pathSegments.single);
+  if (id == null || id <= 0) return null;
+  final style = uri.queryParameters['style'];
+  const styles = {'card', 'fairy_tale', 'novel'};
+  return styles.contains(style) ? '/home/article/$id?style=$style' : '/home/article/$id';
 }

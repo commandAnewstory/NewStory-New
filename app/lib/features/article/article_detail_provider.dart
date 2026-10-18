@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
@@ -131,10 +133,23 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   final BookmarkApi _bookmarks;
   final int articleId;
 
+  /// 기사 URL을 알게 되면(성공·실패 모두) 끝나는 신호 — 위젯에서 바로 변환하려고 열 때 기다린다
+  final _articleReady = Completer<void>();
+  late final Future<void> _levelLoaded;
+
   ArticleDetailNotifier(this._dio, this._repo, this._bookmarks, this.articleId)
       : super(const ArticleDetailState()) {
     _loadArticle();
-    _loadDefaultLevel();
+    _levelLoaded = _loadDefaultLevel();
+  }
+
+  /// 위젯 "관심 뉴스"에서 눌러 들어온 경우: 난이도를 묻지 않고 사용자 기본 난이도로 바로 [style] 변환 시작.
+  /// 기사·기본 난이도를 아직 불러오는 중이면 끝날 때까지 기다렸다가 시작한다.
+  Future<void> openWithStyle(String style) async {
+    state = state.copyWith(selectedStyle: style);
+    await Future.wait([_articleReady.future, _levelLoaded]);
+    if (!mounted || state.articleUrl == null) return;
+    await selectStyle(style, level: state.defaultLevel);
   }
 
   Future<void> _loadDefaultLevel() async {
@@ -161,11 +176,13 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         articleUrl: article.url,
         isLoadingArticle: false,
       );
+      if (!_articleReady.isCompleted) _articleReady.complete();
       _recordView();
       // trigger immediately now that url is known (avoids postFrameCallback race)
       await loadOriginal();
     } catch (_) {
       state = state.copyWith(isLoadingArticle: false);
+      if (!_articleReady.isCompleted) _articleReady.complete();
     }
   }
 

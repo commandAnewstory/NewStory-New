@@ -12,12 +12,16 @@ class UserProfile {
   final String lastGlossaryLevel;
   final bool widgetEnabled;
 
+  /// 관심 카테고리 — 비어 있으면 전체
+  final List<String> interestCategories;
+
   const UserProfile({
     required this.id,
     required this.email,
     required this.nickname,
     required this.lastGlossaryLevel,
     required this.widgetEnabled,
+    this.interestCategories = const [],
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -26,14 +30,17 @@ class UserProfile {
         nickname: json['nickname'] as String,
         lastGlossaryLevel: json['lastGlossaryLevel'] as String,
         widgetEnabled: json['widgetEnabled'] as bool,
+        interestCategories:
+            ((json['interestCategories'] as List?) ?? const []).cast<String>(),
       );
 
-  UserProfile copyWith({bool? widgetEnabled}) => UserProfile(
+  UserProfile copyWith({bool? widgetEnabled, List<String>? interestCategories}) => UserProfile(
         id: id,
         email: email,
         nickname: nickname,
         lastGlossaryLevel: lastGlossaryLevel,
         widgetEnabled: widgetEnabled ?? this.widgetEnabled,
+        interestCategories: interestCategories ?? this.interestCategories,
       );
 }
 
@@ -64,7 +71,8 @@ class MyNotifier extends StateNotifier<MyState> {
       final res = await _dio.get('/api/users/me');
       final profile = UserProfile.fromJson(res.data['data'] as Map<String, dynamic>);
       state = MyState(profile: profile, isLoading: false);
-      await _widget.applyEnabled(profile.widgetEnabled);
+      await _widget.applyProfile(
+          enabled: profile.widgetEnabled, categories: profile.interestCategories);
     } catch (_) {
       state = state.copyWith(isLoading: false);
     }
@@ -81,6 +89,25 @@ class MyNotifier extends StateNotifier<MyState> {
       return;
     }
     await _widget.applyEnabled(enabled);
+  }
+
+  /// 관심 카테고리 칩 하나 켜기/끄기. 서버 저장이 실패하면 원래대로 되돌리고 false.
+  Future<bool> toggleInterest(String category) async {
+    final prev = state.profile;
+    if (prev == null) return false;
+    final current = prev.interestCategories;
+    final next = current.contains(category)
+        ? current.where((c) => c != category).toList()
+        : [...current, category];
+    state = state.copyWith(profile: prev.copyWith(interestCategories: next));
+    try {
+      await _dio.patch('/api/users/me', data: {'interestCategories': next});
+    } catch (_) {
+      if (mounted) state = state.copyWith(profile: prev);
+      return false;
+    }
+    await _widget.applyCategories(next);
+    return true;
   }
 
   Future<void> logout() async {

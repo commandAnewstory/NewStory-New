@@ -64,7 +64,7 @@ Dio _publicDio() => Dio(BaseOptions(
     ));
 
 HomeWidgetService _createService() => HomeWidgetService(
-      fetchCards: todayCardsFetcher(_publicDio()),
+      fetchNews: popularNewsFetcher(_publicDio()),
       store: _widgetSupported ? _HomeWidgetStore() : _NoopStore(),
       scheduler: _widgetSupported ? _WorkmanagerScheduler() : _NoopScheduler(),
     );
@@ -80,6 +80,37 @@ void homeWidgetCallbackDispatcher() {
     return _createService().refresh();
   });
 }
+
+/// 위젯 줄을 눌러 앱이 열린 링크. 앱이 꺼져 있다 켜진 경우([initial])와 켜져 있을 때([clicks]) 둘 다.
+abstract class WidgetLaunchSource {
+  Future<Uri?> initial();
+  Stream<Uri?> get clicks;
+}
+
+class _HomeWidgetLaunchSource implements WidgetLaunchSource {
+  @override
+  Future<Uri?> initial() async {
+    try {
+      return await HomeWidget.initiallyLaunchedFromHomeWidget();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Stream<Uri?> get clicks => HomeWidget.widgetClicked;
+}
+
+class _NoLaunchSource implements WidgetLaunchSource {
+  @override
+  Future<Uri?> initial() async => null;
+  @override
+  Stream<Uri?> get clicks => const Stream.empty();
+}
+
+final widgetLaunchSourceProvider = Provider<WidgetLaunchSource>(
+  (ref) => _widgetSupported ? _HomeWidgetLaunchSource() : _NoLaunchSource(),
+);
 
 Future<void> initHomeWidgetBackground() async {
   if (!_widgetSupported) return;

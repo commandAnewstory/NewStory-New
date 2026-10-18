@@ -21,7 +21,10 @@ const _levels = [
 class ArticleDetailScreen extends ConsumerStatefulWidget {
   final int articleId;
 
-  const ArticleDetailScreen({super.key, required this.articleId});
+  /// 위젯에서 들어올 때 바로 열 변환 스타일 (예: 'card'). null이면 원문 탭
+  final String? initialStyle;
+
+  const ArticleDetailScreen({super.key, required this.articleId, this.initialStyle});
 
   @override
   ConsumerState<ArticleDetailScreen> createState() =>
@@ -38,8 +41,12 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   @override
   void initState() {
     super.initState();
+    final style = widget.initialStyle;
+    if (style == 'fairy_tale' || style == 'novel' || style == 'card') _tab = style!;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(articleDetailProvider(widget.articleId).notifier).loadOriginal();
+      final notifier = ref.read(articleDetailProvider(widget.articleId).notifier);
+      notifier.loadOriginal();
+      if (_tab != 'original') notifier.openWithStyle(_tab);
     });
   }
 

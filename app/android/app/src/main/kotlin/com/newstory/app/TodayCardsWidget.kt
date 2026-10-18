@@ -3,13 +3,14 @@ package com.newstory.app
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 
 /**
- * 홈스크린 위젯: 오늘의 카드요약 3개.
+ * 홈스크린 위젯: 관심 카테고리의 오늘 인기 뉴스 3개 (2026-10-18 교체, 앱 17번). 줄을 누르면 그 기사 카드요약을 앱에서 바로 생성.
  * 데이터는 앱(Dart `HomeWidgetService`)이 home_widget으로 저장해 둔 값을 읽기만 한다. 키 이름은 Dart `WidgetKeys`와 같아야 함.
  */
 class TodayCardsWidget : HomeWidgetProvider() {
@@ -57,9 +58,21 @@ class TodayCardsWidget : HomeWidgetProvider() {
       } else {
         views.setViewVisibility(row.container, View.VISIBLE)
         views.setTextViewText(row.title, title)
-        val time = data.getString("card_${i}_time", null)
-        views.setViewVisibility(row.time, if (time.isNullOrBlank()) View.GONE else View.VISIBLE)
-        views.setTextViewText(row.time, time ?: "")
+        val badge = data.getString("card_${i}_badge", null)
+        views.setViewVisibility(row.time, if (badge.isNullOrBlank()) View.GONE else View.VISIBLE)
+        views.setTextViewText(row.time, badge ?: "")
+        // 줄마다 다른 링크 → 앱이 그 기사 카드요약 탭으로 열림 (Dart widgetUriToLocation)
+        val articleId = data.getString("card_${i}_id", null)
+        if (!articleId.isNullOrBlank()) {
+          views.setOnClickPendingIntent(
+              row.container,
+              HomeWidgetLaunchIntent.getActivity(
+                  context,
+                  MainActivity::class.java,
+                  Uri.parse("newstory://article/$articleId?style=card"),
+              ),
+          )
+        }
       }
     }
     return views

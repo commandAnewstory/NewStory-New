@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../home/widgets/category_chip_bar.dart' show categories;
 import 'my_provider.dart';
 
 class MyScreen extends ConsumerWidget {
@@ -52,6 +53,20 @@ class MyScreen extends ConsumerWidget {
         const SizedBox(height: 20),
         // Widget promo card
         _WidgetPromoCard(enabled: profile.widgetEnabled, onToggle: notifier.setWidgetEnabled),
+        const SizedBox(height: 12),
+        _InterestCard(
+          selected: profile.interestCategories,
+          onToggle: (category) async {
+            final messenger = ScaffoldMessenger.of(context);
+            final ok = await notifier.toggleInterest(category);
+            if (!ok) {
+              messenger.showSnackBar(const SnackBar(
+                content: Text('관심 카테고리를 저장하지 못했어요. 다시 시도해 주세요.'),
+                behavior: SnackBarBehavior.floating,
+              ));
+            }
+          },
+        ),
         const SizedBox(height: 20),
         // Menu list
         _MenuList(onLogout: () => _confirmLogout(context, notifier)),
@@ -168,7 +183,7 @@ class _WidgetPromoCard extends StatelessWidget {
               _GridIcon(),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('오늘의 카드요약 위젯',
+                child: Text('관심 뉴스 위젯',
                     style: AppTextStyles.display(15)),
               ),
               GestureDetector(
@@ -204,11 +219,90 @@ class _WidgetPromoCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           const Text(
-            '홈 화면에서 앱을 열지 않고도 오늘의 카드요약 3개를 바로 볼 수 있어요',
+            '관심 카테고리의 오늘 인기 뉴스 3개를 홈 화면에서 바로 보고, 누르면 카드요약으로 읽어요',
             style: TextStyle(
                 fontSize: 12, color: Color(0xFF9A9CA3), height: 1.5),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 관심 카테고리 — 위젯 "관심 뉴스"에 쓰인다. 하나도 안 고르면 전체.
+class _InterestCard extends StatelessWidget {
+  final List<String> selected;
+  final ValueChanged<String> onToggle;
+
+  const _InterestCard({required this.selected, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    final options = categories.where((c) => c != '전체').toList();
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFECEAE4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('관심 카테고리', style: AppTextStyles.display(15)),
+          const SizedBox(height: 4),
+          Text(
+            selected.isEmpty ? '안 고르면 전체 카테고리에서 골라요' : '${selected.length}개 선택',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9A9CA3)),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final c in options)
+                _InterestChip(
+                  label: c,
+                  selected: selected.contains(c),
+                  onTap: () => onToggle(c),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InterestChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _InterestChip({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      key: Key('interest-$label'),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: selected ? AppColors.primary : const Color(0xFFECEAE4), width: 1.3),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+            color: selected ? Colors.white : const Color(0xFF6B6E76),
+          ),
+        ),
       ),
     );
   }
