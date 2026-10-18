@@ -30,7 +30,9 @@ public class NewsService {
 
   @Transactional(readOnly = true)
   public NewsPageResponse getNews(String category, String keyword, int page, int size) {
-    PageRequest pageable = PageRequest.of(page, size, Sort.by("publishedAt").descending());
+    // 직접 변환으로 저장된 기사는 발행시각이 없다 — DESC 기본(NULLS FIRST)이면 홈 맨 위를 차지해서 맨 뒤로
+    PageRequest pageable =
+        PageRequest.of(page, size, Sort.by(Sort.Order.desc("publishedAt").nullsLast()));
     String cat = (category == null || category.isBlank()) ? null : category;
     String kw = keyword == null ? "" : keyword.strip();
     if (kw.length() > MAX_KEYWORD_LENGTH) {
