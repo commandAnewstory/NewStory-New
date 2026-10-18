@@ -18,6 +18,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: '/home',
+    // 모르는 경로(예: 외부 링크)는 'Page Not Found' 대신 홈으로
+    onException: (_, _, router) => router.go('/home'),
     redirect: (context, state) {
       final isLoggedIn = authState.isLoggedIn;
       final loc = state.matchedLocation;
