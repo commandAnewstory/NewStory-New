@@ -133,4 +133,20 @@ class NewsQueryTest extends IntegrationTestSupport {
     assertThat(titles).containsExactly("정치 기사", "경제 기사", "정치 기사 2", "직접 변환한 기사");
     assertThat(titles(search("기사", null))).last().isEqualTo("직접 변환한 기사");
   }
+
+  @Test
+  void 설명에_섞인_HTML_태그는_벗기고_텍스트만() {
+    newsArticleRepository.save(
+        NewsArticle.builder()
+            .url("https://a.example/html")
+            .title("HTML 설명 기사")
+            .category("사회")
+            .description("&lt;img src='https://dimg.donga.com/a.jpg' /&gt;<b>본문</b> 요약입니다  &amp; 끝")
+            .publishedAt(java.time.LocalDateTime.now())
+            .build());
+
+    Res res = get("/api/news?category=사회", null);
+
+    assertThat((String) res.json("$.data.content[0].description")).isEqualTo("본문 요약입니다 & 끝");
+  }
 }

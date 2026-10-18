@@ -1,6 +1,7 @@
 package com.newstory.newstorybackend.domain.news.client;
 
 import com.newstory.newstorybackend.domain.news.dto.RssItem;
+import com.newstory.newstorybackend.global.common.HtmlText;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,6 +44,7 @@ public class RssFeedClient {
 
         String description = text(item, "description");
         if (description.isBlank()) description = text(item, "content:encoded");
+        description = HtmlText.plain(description);
 
         LocalDateTime publishedAt = parseDate(text(item, "pubDate"));
 
