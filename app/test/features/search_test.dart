@@ -47,7 +47,8 @@ void main() {
 
     tearDown(() => container.dispose());
 
-    Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 60));
+    // 디바운스(20ms)보다 넉넉히 — 전체 테스트를 병렬로 돌려 CPU가 바쁠 때도 안 흔들리게
+    Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 250));
 
     test('연속 입력하면 멈춘 뒤 마지막 검색어로 한 번만 요청', () async {
       api.onJson('GET', '/api/news', _page([_article(1, '금리 인상')]));
