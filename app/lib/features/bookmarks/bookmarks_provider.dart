@@ -11,6 +11,9 @@ class BookmarkItem {
   final String bookmarkedAt;
   final String? articleUrl;
 
+  /// 기사 카테고리 — 직접 변환한 기사는 null
+  final String? category;
+
   const BookmarkItem({
     required this.bookmarkId,
     required this.resultId,
@@ -18,6 +21,7 @@ class BookmarkItem {
     required this.articleTitle,
     required this.bookmarkedAt,
     this.articleUrl,
+    this.category,
   });
 
   factory BookmarkItem.fromJson(Map<String, dynamic> json) => BookmarkItem(
@@ -27,6 +31,7 @@ class BookmarkItem {
         articleTitle: json['articleTitle'] as String,
         bookmarkedAt: json['bookmarkedAt'] as String,
         articleUrl: json['articleUrl'] as String?,
+        category: json['category'] as String?,
       );
 }
 
@@ -36,6 +41,10 @@ class HistoryItem {
   final String articleTitle;
   final String createdAt;
   final String? articleUrl;
+  final String? category;
+
+  /// 마지막으로 본 시각 (없으면 createdAt)
+  final String? viewedAt;
 
   const HistoryItem({
     required this.resultId,
@@ -43,6 +52,8 @@ class HistoryItem {
     required this.articleTitle,
     required this.createdAt,
     this.articleUrl,
+    this.category,
+    this.viewedAt,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) => HistoryItem(
@@ -51,6 +62,8 @@ class HistoryItem {
         articleTitle: json['articleTitle'] as String,
         createdAt: json['createdAt'] as String,
         articleUrl: json['articleUrl'] as String?,
+        category: json['category'] as String?,
+        viewedAt: json['viewedAt'] as String?,
       );
 }
 

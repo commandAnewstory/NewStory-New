@@ -40,22 +40,26 @@ class ArticleListTile extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: catColors.bg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    article.category,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: catColors.text,
+                // 직접 변환한 기사는 카테고리가 없다 — 빈 배지 대신 숨김
+                if (article.category.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: catColors.bg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      article.category,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: catColors.text,
+                      ),
                     ),
                   ),
-                ),
                 if (article.source != null && article.source!.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Text(
