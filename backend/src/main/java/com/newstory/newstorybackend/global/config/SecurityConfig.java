@@ -59,6 +59,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/widget/today-cards")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/widget/popular")
+                    .permitAll()
                     .requestMatchers("/api/debug/**")
                     .permitAll()
                     .anyRequest()
