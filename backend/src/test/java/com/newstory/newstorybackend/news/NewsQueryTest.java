@@ -121,4 +121,16 @@ class NewsQueryTest extends IntegrationTestSupport {
     assertThat(search("가".repeat(51), null).status()).isEqualTo(400);
     assertThat(search("가".repeat(50), null).status()).isEqualTo(200);
   }
+
+  @Test
+  void 발행시각_없는_기사_직접_변환으로_저장된_것은_목록_맨_뒤() {
+    newsArticleRepository.save(
+        NewsArticle.builder().url("https://user.example/x").title("직접 변환한 기사").build());
+
+    Res res = get("/api/news", null);
+
+    List<String> titles = res.json("$.data.content[*].title");
+    assertThat(titles).containsExactly("정치 기사", "경제 기사", "정치 기사 2", "직접 변환한 기사");
+    assertThat(titles(search("기사", null))).last().isEqualTo("직접 변환한 기사");
+  }
 }
