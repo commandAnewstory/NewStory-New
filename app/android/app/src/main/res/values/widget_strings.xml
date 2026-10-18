@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_header">관심 뉴스</string>
+    <string name="widget_chip">카드요약</string>
+    <string name="widget_description">관심 카테고리의 오늘 인기 뉴스 3개, 누르면 카드요약으로 읽어요</string>
+    <string name="widget_message_disabled">MY에서 위젯을 켜주세요</string>
+    <string name="widget_message_empty">아직 오늘 뉴스가 없어요</string>
+    <string name="widget_message_loading">앱을 열면 관심 뉴스를 불러와요</string>
+</resources>

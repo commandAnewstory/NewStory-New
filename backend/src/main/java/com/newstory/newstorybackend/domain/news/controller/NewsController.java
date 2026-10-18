@@ -23,9 +23,10 @@ public class NewsController {
   @GetMapping
   public ApiResponse<NewsPageResponse> getNews(
       @RequestParam(required = false) String category,
+      @RequestParam(required = false) String keyword,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size) {
-    return ApiResponse.ok(newsService.getNews(category, page, size));
+    return ApiResponse.ok(newsService.getNews(category, keyword, page, size));
   }
 
   @GetMapping("/{id}")

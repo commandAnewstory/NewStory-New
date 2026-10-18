@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; }
+    .display { font-family: 'Do Hyeon', -apple-system, sans-serif; font-weight: 400; letter-spacing: -0.01em; }
+  </style>
+</helmet>
+<div style="width:390px; height:844px; background:#fff; position:relative; overflow:hidden; border:1px solid #ddd;">
+  <div style="display:flex; flex-direction:column; height:100%;">
+
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 16px 10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#17181C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5 8 12l7 7"/></svg>
+      <div style="display:flex; gap:16px; color:#6B6E76;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.8 15.8 6.4M8.2 13.2l7.6 4.4"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z"/></svg>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:6px; padding:6px 16px 16px;">
+      <div style="padding:7px 14px; border-radius:16px; font-size:12px; color:#9A9CA3; border:1.3px solid #ECEAE4;">원문</div>
+      <div style="padding:7px 14px; border-radius:16px; font-size:12px; color:#9A9CA3; border:1.3px solid #ECEAE4;">동화체</div>
+      <div style="padding:7px 14px; border-radius:16px; font-size:12px; color:#9A9CA3; border:1.3px solid #ECEAE4;">소설체</div>
+      <div class="display" style="padding:7px 14px; border-radius:16px; font-size:13px; color:#fff; background:#14B8A6;">카드요약</div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto; padding:4px 20px 110px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span class="display" style="font-size:12px; color:#fff; background:#14B8A6; border-radius:10px; padding:4px 10px;">30초 컷</span>
+        <span style="font-size:11px; color:#9A9CA3;">연합뉴스 · 12분 전</span>
+      </div>
+      <div style="height:16px; width:96%; background:#EDEBE5; border-radius:4px; margin-bottom:8px;"></div>
+      <div style="height:16px; width:66%; background:#EDEBE5; border-radius:4px; margin-bottom:24px;"></div>
+
+      <sc-for list="{{points}}" as="p" hint-placeholder-count="5">
+        <div style="display:flex; gap:12px; padding:16px 0; border-bottom:1px solid #F2F0EA;">
+          <div style="width:26px; height:26px; border-radius:8px; background:#D7F3EE; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#0B6E64;">{{p.n}}</div>
+          <div style="flex:1;">
+            <div style="height:11px; width:92%; background:#EDEBE5; border-radius:3px; margin-bottom:8px;"></div>
+            <div style="height:11px; width:54%; background:#EDEBE5; border-radius:3px;"></div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="position:absolute; bottom:0; left:0; right:0; padding:14px 20px 22px; background:#fff; border-top:1px solid #ECEAE4; display:flex; gap:10px;">
+      <div style="flex:1; height:50px; border-radius:14px; background:#14B8A6; display:flex; align-items:center; justify-content:center; gap:8px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z"/></svg>
+        <span style="font-size:14px; font-weight:700; color:#fff;">보관함에 저장</span>
+      </div>
+      <div style="width:50px; height:50px; border-radius:14px; border:1.4px solid #ECEAE4; display:flex; align-items:center; justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#17181C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="2.4"/><circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="19" r="2.4"/><path d="M8.2 10.8 15.8 6.4M8.2 13.2l7.6 4.4"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return { points: [{n:1},{n:2},{n:3},{n:4},{n:5}] };
+  }
+}
+</script>
+</body>
+</html>

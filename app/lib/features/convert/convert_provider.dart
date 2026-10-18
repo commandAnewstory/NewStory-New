@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/bookmark/bookmark_api.dart';
 import '../article/article_detail_provider.dart';
 
 class ConvertState {
@@ -42,8 +43,10 @@ class ConvertState {
 
 class ConvertNotifier extends StateNotifier<ConvertState> {
   final Dio _dio;
+  final BookmarkApi _bookmarks;
+  bool _togglingBookmark = false;
 
-  ConvertNotifier(this._dio) : super(const ConvertState());
+  ConvertNotifier(this._dio, this._bookmarks) : super(const ConvertState());
 
   void setUrl(String url) {
     state = state.copyWith(url: url, clearResult: true, error: null);
@@ -62,14 +65,7 @@ class ConvertNotifier extends StateNotifier<ConvertState> {
         'style': state.selectedStyle,
       });
       final data = response.data['data'] as Map<String, dynamic>;
-      final glossaryRaw = data['glossary'] as List<dynamic>? ?? [];
-      final result = ConvertResult(
-        convertedText: data['convertedText'] as String,
-        glossary: glossaryRaw
-            .map((e) => GlossaryItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        readingTimeLabel: data['readingTimeLabel'] as String?,
-      );
+      final result = ConvertResult.fromJson(data);
       state = state.copyWith(isConverting: false, result: result);
     } catch (e) {
       state = state.copyWith(
@@ -78,9 +74,28 @@ class ConvertNotifier extends StateNotifier<ConvertState> {
   }
 
   void retry() => convert();
+
+  /// 변환 결과 보관함 저장 ↔ 취소. 성공하면 true, 실패하면 상태 그대로 두고 false.
+  Future<bool> toggleBookmark() async {
+    final current = state.result;
+    if (current?.resultId == null || _togglingBookmark) return false;
+    _togglingBookmark = true;
+    try {
+      final bookmarked = await _bookmarks.toggle(current!.resultId!,
+          currentlyBookmarked: current.bookmarked);
+      if (identical(state.result, current)) {
+        state = state.copyWith(result: current.copyWith(bookmarked: bookmarked));
+      }
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      _togglingBookmark = false;
+    }
+  }
 }
 
 final convertProvider =
     StateNotifierProvider<ConvertNotifier, ConvertState>(
-  (ref) => ConvertNotifier(ref.watch(dioProvider)),
+  (ref) => ConvertNotifier(ref.watch(dioProvider), ref.watch(bookmarkApiProvider)),
 );

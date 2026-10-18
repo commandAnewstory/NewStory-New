@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/router/app_router.dart';
+import '../../core/theme/app_theme.dart';
 import 'home_provider.dart';
 import 'widgets/category_chip_bar.dart';
-import 'widgets/hero_card.dart';
-import 'widgets/article_grid_card.dart';
+import 'widgets/article_list_tile.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -40,22 +41,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final state = ref.watch(homeProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'NewStory',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(),
+            CategoryChipBar(
+              selected: state.selectedCategory,
+              onSelected: (cat) =>
+                  ref.read(homeProvider.notifier).selectCategory(cat),
+            ),
+            Expanded(child: _buildBody(state)),
+          ],
         ),
-        centerTitle: false,
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          CategoryChipBar(
-            selected: state.selectedCategory,
-            onSelected: (cat) =>
-                ref.read(homeProvider.notifier).selectCategory(cat),
+          Text('NewStory', style: AppTextStyles.display(21)),
+          GestureDetector(
+            key: const Key('home-search'),
+            onTap: () => context.push('/home/search'),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: CustomPaint(
+                size: const Size(20, 20),
+                painter: SearchIconPainter(const Color(0xFF6B6E76)),
+              ),
+            ),
           ),
-          const SizedBox(height: 4),
-          Expanded(child: _buildBody(state)),
         ],
       ),
     );
@@ -86,55 +108,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return const Center(child: Text('기사가 없습니다'));
     }
 
-    final hero = state.articles.first;
-    final gridItems = state.articles.skip(1).toList();
-
     return RefreshIndicator(
       onRefresh: () => ref.read(homeProvider.notifier).fetchInitial(),
-      child: CustomScrollView(
+      child: ListView.separated(
         controller: _scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: HeroCard(
-              article: hero,
-              onTap: () => _navigateToDetail(hero.id),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            sliver: SliverGrid(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  if (index >= gridItems.length) return null;
-                  final article = gridItems[index];
-                  return ArticleGridCard(
-                    article: article,
-                    onTap: () => _navigateToDetail(article.id),
-                  );
-                },
-                childCount: gridItems.length,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                childAspectRatio: 0.72,
-              ),
-            ),
-          ),
-          if (state.isLoadingMore)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-        ],
+        itemCount: state.articles.length + (state.isLoadingMore ? 1 : 0),
+        separatorBuilder: (context, i) => const Divider(
+          height: 1,
+          indent: 20,
+          endIndent: 20,
+          color: Color(0xFFF0EDE8),
+        ),
+        itemBuilder: (context, index) {
+          if (index >= state.articles.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final article = state.articles[index];
+          return ArticleListTile(
+            article: article,
+            onTap: () => context.push('/home/article/${article.id}'),
+          );
+        },
       ),
     );
-  }
-
-  void _navigateToDetail(int articleId) {
-    context.push('/home/article/$articleId');
   }
 }

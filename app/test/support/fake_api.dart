@@ -1,0 +1,59 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
+
+/// 테스트용 가짜 서버. 실제 네트워크 대신 `메서드 + 경로`별로 정해둔 응답을 돌려주고, 들어온 요청을 기록한다.
+class FakeApi implements HttpClientAdapter {
+  final Map<String, Object? Function(RequestOptions)> _routes = {};
+  final List<RequestOptions> requests = [];
+
+  /// [body]가 [FakeError]면 그 상태코드로 실패시킨다. Future를 돌려주면 그게 끝날 때 응답한다.
+  void on(String method, String path, Object? Function(RequestOptions req) body) {
+    _routes['${method.toUpperCase()} $path'] = body;
+  }
+
+  void onJson(String method, String path, Object? data) =>
+      on(method, path, (_) => {'success': true, 'data': data});
+
+  List<RequestOptions> calls(String method, String path) => requests
+      .where((r) => r.method == method.toUpperCase() && r.path == path)
+      .toList();
+
+  Dio dio() => Dio(BaseOptions(baseUrl: 'http://fake'))..httpClientAdapter = this;
+
+  @override
+  Future<ResponseBody> fetch(
+      RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+    requests.add(options);
+    final handler = _routes['${options.method} ${options.path}'];
+    if (handler == null) {
+      return ResponseBody.fromString('{"success":false}', 404,
+          headers: _jsonHeaders);
+    }
+    var body = handler(options);
+    // 응답 순서를 테스트에서 조절할 수 있게 Future도 받는다
+    if (body is Future) body = await body;
+    if (body is FakeError) {
+      return ResponseBody.fromString(
+          jsonEncode({'success': false, 'message': body.message}), body.status,
+          headers: _jsonHeaders);
+    }
+    return ResponseBody.fromString(jsonEncode(body), 200, headers: _jsonHeaders);
+  }
+
+  static const _jsonHeaders = {
+    Headers.contentTypeHeader: [Headers.jsonContentType],
+  };
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class FakeError {
+  final int status;
+
+  /// 서버가 내려주는 실패 안내 문구 (`ApiResponse.fail(message)`)
+  final String? message;
+  const FakeError(this.status, [this.message]);
+}

@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif; }
+    a { color: #3654F4; } a:hover { color: #2440D6; }
+    .scrollx::-webkit-scrollbar { display: none; }
+    .display { font-family: 'Do Hyeon', -apple-system, sans-serif; font-weight: 400; letter-spacing: -0.01em; }
+  </style>
+</helmet>
+<div style="width:390px; height:844px; background:#F7F7F6; position:relative; overflow:hidden; border:1px solid #ddd;">
+  <div style="display:flex; flex-direction:column; height:100%;">
+
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:18px 20px 12px; background:#F7F7F6;">
+      <span class="display" style="font-size:21px; color:#17181C;">NewStory</span>
+      <div style="display:flex; gap:16px; color:#6B6E76;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      </div>
+    </div>
+
+    <div class="scrollx" style="display:flex; gap:8px; padding:4px 20px 14px; overflow-x:auto; flex-shrink:0;">
+      <div style="flex-shrink:0; padding:8px 16px; border-radius:18px; background:#3654F4; font-size:13px; font-weight:700; color:#fff;">전체</div>
+      <sc-for list="{{cats}}" as="c" hint-placeholder-count="6">
+        <div style="flex-shrink:0; padding:8px 16px; border-radius:18px; border:1.4px solid #E7E4DE; font-size:13px; color:#4A4D55; font-weight:500; background:#fff;">{{c.name}}</div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1; overflow-y:auto; padding:2px 20px 100px;">
+
+      <div style="position:relative; height:224px; border-radius:18px; overflow:hidden; background:repeating-linear-gradient(135deg,#E8ECFC,#E8ECFC 10px,#F1F3FD 10px,#F1F3FD 20px); border:1px solid #E7E4DE; margin-bottom:22px;">
+        <div style="position:absolute; top:12px; left:12px; background:#fff; border-radius:8px; padding:5px 10px; font-size:11px; color:#3654F4; font-weight:700;">경제</div>
+        <div style="position:absolute; bottom:0; left:0; right:0; padding:16px; background:linear-gradient(to top, rgba(17,18,25,0.78), rgba(17,18,25,0));">
+          <div style="height:14px; width:88%; background:rgba(255,255,255,0.92); border-radius:4px; margin-bottom:8px;"></div>
+          <div style="height:14px; width:58%; background:rgba(255,255,255,0.92); border-radius:4px; margin-bottom:12px;"></div>
+          <div style="display:flex; gap:6px;">
+            <span style="font-size:10px; font-weight:700; color:#8A5A0F; background:#FDECC8; border-radius:10px; padding:3px 9px;">동화체</span>
+            <span style="font-size:10px; font-weight:700; color:#5A3A9E; background:#E6DEFA; border-radius:10px; padding:3px 9px;">소설체</span>
+            <span style="font-size:10px; font-weight:700; color:#0B6E64; background:#D7F3EE; border-radius:10px; padding:3px 9px;">카드요약</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <span class="display" style="font-size:16px; color:#17181C;">최신 뉴스</span>
+        <span style="font-size:12px; color:#9A9CA3;">더보기</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px;">
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="height:104px; border-radius:12px; background:repeating-linear-gradient(135deg,#F0F0EC,#F0F0EC 8px,#F7F7F4 8px,#F7F7F4 16px); border:1px solid #E7E4DE; position:relative;">
+            <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; color:#0B6E64; background:#D7F3EE; border-radius:6px; padding:3px 7px;">사회</span>
+            <span style="position:absolute; bottom:8px; left:8px; font-size:10px; font-weight:800; color:#fff; background:#14B8A6; border-radius:10px; padding:3px 8px;">30초 컷</span>
+          </div>
+          <div style="height:10px; width:96%; background:#E9E7E1; border-radius:3px;"></div>
+          <div style="height:10px; width:62%; background:#E9E7E1; border-radius:3px;"></div>
+        </div>
+
+        <sc-for list="{{feed}}" as="item" hint-placeholder-count="5">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="height:104px; border-radius:12px; background:repeating-linear-gradient(135deg,#F0F0EC,#F0F0EC 8px,#F7F7F4 8px,#F7F7F4 16px); border:1px solid #E7E4DE; position:relative;">
+              <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; color:{{item.tagColor}}; background:{{item.tagBg}}; border-radius:6px; padding:3px 7px;">{{item.tag}}</span>
+            </div>
+            <div style="height:10px; width:94%; background:#E9E7E1; border-radius:3px;"></div>
+            <div style="height:10px; width:68%; background:#E9E7E1; border-radius:3px;"></div>
+            <div style="display:flex; gap:4px; margin-top:1px;">
+              <div style="width:15px; height:15px; border-radius:5px; border:1.2px solid #D8D4CC;"></div>
+              <div style="width:15px; height:15px; border-radius:5px; border:1.2px solid #D8D4CC;"></div>
+              <div style="width:15px; height:15px; border-radius:5px; border:1.2px solid #D8D4CC;"></div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="position:absolute; bottom:0; left:0; right:0; height:66px; background:#fff; border-top:1px solid #ECEAE4; display:flex; align-items:center; justify-content:space-around;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#3654F4;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg>
+      <span style="font-size:10px; font-weight:700;">홈</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#9CA0A8;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11m0 0-3.5-3.5M18 7l-3.5 3.5"/><path d="M17 17H6m0 0 3.5-3.5M6 17l3.5 3.5"/></svg>
+      <span style="font-size:10px;">변환</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#9CA0A8;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z"/></svg>
+      <span style="font-size:10px;">보관함</span>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:center; gap:3px; color:#9CA0A8;">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/></svg>
+      <span style="font-size:10px;">MY</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      cats: [{ name: '정치' }, { name: '경제' }, { name: '사회' }, { name: '국제' }, { name: '스포츠' }, { name: '생활·문화' }],
+      feed: [
+        { tag: '국제', tagColor: '#B8501C', tagBg: '#FBE3D4' },
+        { tag: '스포츠', tagColor: '#1D6FB8', tagBg: '#DCEBFB' },
+        { tag: 'IT', tagColor: '#3654F4', tagBg: '#E8ECFC' },
+        { tag: '정치', tagColor: '#8A5A0F', tagBg: '#FDECC8' },
+        { tag: '문화', tagColor: '#5A3A9E', tagBg: '#E6DEFA' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

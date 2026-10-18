@@ -3,8 +3,10 @@ package com.newstory.newstorybackend.domain.convert.service;
 import com.newstory.newstorybackend.domain.ai.client.ClaudeApiClient;
 import com.newstory.newstorybackend.domain.ai.client.GemmaApiClient;
 import com.newstory.newstorybackend.domain.ai.dto.VerificationResult;
+import com.newstory.newstorybackend.domain.bookmark.repository.BookmarkRepository;
 import com.newstory.newstorybackend.domain.convert.dto.ConvertRequest;
 import com.newstory.newstorybackend.domain.convert.dto.ConvertResponse;
+import com.newstory.newstorybackend.domain.convert.dto.GlossaryItem;
 import com.newstory.newstorybackend.domain.convert.dto.OriginalArticleResponse;
 import com.newstory.newstorybackend.domain.convert.entity.ConversionCache;
 import com.newstory.newstorybackend.domain.convert.entity.ConvertedResult;
@@ -15,12 +17,13 @@ import com.newstory.newstorybackend.domain.crawling.service.CrawlingService;
 import com.newstory.newstorybackend.domain.news.entity.NewsArticle;
 import com.newstory.newstorybackend.domain.news.repository.NewsArticleRepository;
 import com.newstory.newstorybackend.domain.user.entity.User;
-import com.newstory.newstorybackend.global.common.GlossaryParser;
 import com.newstory.newstorybackend.global.exception.NotFoundException;
 import com.newstory.newstorybackend.global.exception.UnauthorizedException;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +43,9 @@ public class ConvertService {
   private final NewsArticleRepository newsArticleRepository;
   private final ConvertedResultRepository convertedResultRepository;
   private final ConversionCacheRepository conversionCacheRepository;
+  private final ConvertPersister convertPersister;
+  private final BookmarkRepository bookmarkRepository;
+  private final ConcurrentHashMap<String, Object> inFlight = new ConcurrentHashMap<>();
 
   public OriginalArticleResponse getOriginal(String url) {
     CrawledArticle article = crawlingService.crawl(url);
@@ -51,67 +57,80 @@ public class ConvertService {
         article.getImageUrls());
   }
 
-  @Transactional
+  /**
+   * 1) 기사+스타일+레벨 캐시가 있으면 크롤링·AI 없이 바로 응답한다. 2) 없으면 같은 키의 동시 요청을 하나로 묶어 AI를 한 번만 부른다. 3) 그래도 (서버가 여러
+   * 대일 때 등) 저장이 겹치면 UNIQUE 위반을 잡아 먼저 저장된 캐시를 쓴다.
+   */
   public ConvertResponse convert(ConvertRequest request, User user) {
     String level = resolveLevel(request.getLevel(), user);
+    String style = request.getStyle();
+    String url = request.getUrl();
 
-    CrawledArticle crawled = crawlingService.crawl(request.getUrl());
+    CacheRef ref = findCached(url, style, level);
+    boolean cacheHit = ref != null;
 
+    if (ref == null) {
+      String key = url + "\n" + style + "\n" + level;
+      Object lock = inFlight.computeIfAbsent(key, k -> new Object());
+      try {
+        synchronized (lock) {
+          ref = findCached(url, style, level);
+          if (ref != null) {
+            cacheHit = true;
+          } else {
+            ref = convertAndStore(url, style, level);
+          }
+        }
+      } finally {
+        inFlight.remove(key, lock);
+      }
+    }
+
+    return convertPersister.recordResult(
+        user.getId(), ref.articleId(), style, level, ref.cacheId(), cacheHit);
+  }
+
+  private CacheRef findCached(String url, String style, String level) {
+    return newsArticleRepository
+        .findByUrl(url)
+        .flatMap(
+            article ->
+                conversionCacheRepository
+                    .findByArticleIdAndStyleAndLevel(article.getId(), style, level)
+                    .map(cache -> new CacheRef(article.getId(), cache.getId())))
+        .orElse(null);
+  }
+
+  private CacheRef convertAndStore(String url, String style, String level) {
+    CrawledArticle crawled = crawlingService.crawl(url);
     NewsArticle article =
         newsArticleRepository
-            .findByUrl(request.getUrl())
-            .orElseGet(
-                () ->
-                    newsArticleRepository.save(
-                        NewsArticle.builder()
-                            .url(request.getUrl())
-                            .title(crawled.getTitle())
-                            .build()));
+            .findByUrl(url)
+            .orElseGet(() -> saveArticleOrReuse(url, crawled.getTitle()));
 
-    boolean cacheHit = false;
-    ConversionCache cache =
-        conversionCacheRepository
-            .findByArticleIdAndStyleAndLevel(article.getId(), request.getStyle(), level)
-            .orElse(null);
+    ConvertPersister.ConversionOutcome outcome = runConversionPipeline(crawled, style, level);
 
-    if (cache == null) {
-      ConversionOutcome outcome = runConversionPipeline(crawled, request.getStyle(), level);
-      GlossaryParser.ParsedContent parsed = GlossaryParser.parse(outcome.convertedText());
+    ConversionCache cache;
+    try {
+      cache = convertPersister.saveCache(article, style, level, outcome);
+    } catch (DataIntegrityViolationException e) {
       cache =
-          conversionCacheRepository.save(
-              ConversionCache.builder()
-                  .article(article)
-                  .style(request.getStyle())
-                  .level(level)
-                  .convertedText(parsed.plainText())
-                  .glossary(parsed.glossary())
-                  .verificationPassed(outcome.verificationPassed())
-                  .verificationMethod(outcome.verificationMethod())
-                  .retryCount(outcome.retryCount())
-                  .build());
-    } else {
-      cacheHit = true;
+          conversionCacheRepository
+              .findByArticleIdAndStyleAndLevel(article.getId(), style, level)
+              .orElseThrow(() -> e);
     }
-
-    if (!level.equals(user.getLastGlossaryLevel())) {
-      user.updateLastGlossaryLevel(level);
-    }
-
-    ConvertedResult result =
-        ConvertedResult.builder()
-            .article(article)
-            .user(user)
-            .style(request.getStyle())
-            .convertedText(cache.getConvertedText())
-            .verificationPassed(cache.getVerificationPassed())
-            .verificationMethod(cache.getVerificationMethod())
-            .retryCount(cache.getRetryCount())
-            .isFeed(false)
-            .build();
-
-    return new ConvertResponse(
-        convertedResultRepository.save(result), cacheHit, cache.getGlossary());
+    return new CacheRef(article.getId(), cache.getId());
   }
+
+  private NewsArticle saveArticleOrReuse(String url, String title) {
+    try {
+      return convertPersister.saveArticle(url, title);
+    } catch (DataIntegrityViolationException e) {
+      return newsArticleRepository.findByUrl(url).orElseThrow(() -> e);
+    }
+  }
+
+  private record CacheRef(Long articleId, Long cacheId) {}
 
   @Transactional(readOnly = true)
   public ConvertResponse getResult(Long resultId, User user) {
@@ -124,7 +143,14 @@ public class ConvertService {
       throw new UnauthorizedException("접근 권한이 없습니다.");
     }
 
-    return new ConvertResponse(result, false, List.of());
+    List<GlossaryItem> glossary =
+        conversionCacheRepository
+            .findByArticleIdAndStyleAndLevel(
+                result.getArticle().getId(), result.getStyle(), result.getLevel())
+            .map(ConversionCache::getGlossary)
+            .orElse(List.of());
+    boolean bookmarked = bookmarkRepository.existsByUserIdAndResultId(user.getId(), resultId);
+    return new ConvertResponse(result, false, glossary, bookmarked);
   }
 
   private String resolveLevel(String requestLevel, User user) {
@@ -135,7 +161,7 @@ public class ConvertService {
     return (userLevel != null && !userLevel.isBlank()) ? userLevel : DEFAULT_LEVEL;
   }
 
-  private ConversionOutcome runConversionPipeline(
+  private ConvertPersister.ConversionOutcome runConversionPipeline(
       CrawledArticle crawled, String style, String level) {
     String convertedText = null;
     int retryCount = 0;
@@ -152,13 +178,15 @@ public class ConvertService {
       } catch (Exception e) {
         log.warn("Gemma 실패, Claude로 fallback: {}", e.getMessage());
         String fallbackText = claudeApiClient.convert(crawled.getContent(), style, level);
-        return new ConversionOutcome(fallbackText, false, METHOD_CLAUDE_FALLBACK, retryCount);
+        return new ConvertPersister.ConversionOutcome(
+            fallbackText, false, METHOD_CLAUDE_FALLBACK, retryCount);
       }
 
       VerificationResult verification = claudeApiClient.verify(crawled.getContent(), convertedText);
 
       if (verification.isPassed()) {
-        return new ConversionOutcome(convertedText, true, METHOD_GEMMA_VERIFIED, retryCount);
+        return new ConvertPersister.ConversionOutcome(
+            convertedText, true, METHOD_GEMMA_VERIFIED, retryCount);
       }
 
       issues = verification.getRawResponse();
@@ -168,12 +196,7 @@ public class ConvertService {
 
     log.warn("Gemma 검증 최종 실패, Claude로 fallback");
     String fallbackText = claudeApiClient.convert(crawled.getContent(), style, level);
-    return new ConversionOutcome(fallbackText, false, METHOD_CLAUDE_FALLBACK, retryCount);
+    return new ConvertPersister.ConversionOutcome(
+        fallbackText, false, METHOD_CLAUDE_FALLBACK, retryCount);
   }
-
-  private record ConversionOutcome(
-      String convertedText,
-      boolean verificationPassed,
-      String verificationMethod,
-      int retryCount) {}
 }

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
+import '../../core/bookmark/bookmark_api.dart';
 
 class BookmarkItem {
   final int bookmarkId;
@@ -8,6 +9,10 @@ class BookmarkItem {
   final String style;
   final String articleTitle;
   final String bookmarkedAt;
+  final String? articleUrl;
+
+  /// 기사 카테고리 — 직접 변환한 기사는 null
+  final String? category;
 
   const BookmarkItem({
     required this.bookmarkId,
@@ -15,6 +20,8 @@ class BookmarkItem {
     required this.style,
     required this.articleTitle,
     required this.bookmarkedAt,
+    this.articleUrl,
+    this.category,
   });
 
   factory BookmarkItem.fromJson(Map<String, dynamic> json) => BookmarkItem(
@@ -23,6 +30,8 @@ class BookmarkItem {
         style: json['style'] as String,
         articleTitle: json['articleTitle'] as String,
         bookmarkedAt: json['bookmarkedAt'] as String,
+        articleUrl: json['articleUrl'] as String?,
+        category: json['category'] as String?,
       );
 }
 
@@ -31,12 +40,20 @@ class HistoryItem {
   final String style;
   final String articleTitle;
   final String createdAt;
+  final String? articleUrl;
+  final String? category;
+
+  /// 마지막으로 본 시각 (없으면 createdAt)
+  final String? viewedAt;
 
   const HistoryItem({
     required this.resultId,
     required this.style,
     required this.articleTitle,
     required this.createdAt,
+    this.articleUrl,
+    this.category,
+    this.viewedAt,
   });
 
   factory HistoryItem.fromJson(Map<String, dynamic> json) => HistoryItem(
@@ -44,6 +61,9 @@ class HistoryItem {
         style: json['style'] as String,
         articleTitle: json['articleTitle'] as String,
         createdAt: json['createdAt'] as String,
+        articleUrl: json['articleUrl'] as String?,
+        category: json['category'] as String?,
+        viewedAt: json['viewedAt'] as String?,
       );
 }
 
@@ -139,5 +159,9 @@ class BookmarksNotifier extends StateNotifier<BookmarksState> {
 
 final bookmarksProvider =
     StateNotifierProvider<BookmarksNotifier, BookmarksState>(
-  (ref) => BookmarksNotifier(ref.watch(dioProvider)),
+  (ref) {
+    // 다른 화면에서 저장/취소하면 revision이 바뀌고, 그때 목록을 새로 불러온다
+    ref.watch(bookmarksRevisionProvider);
+    return BookmarksNotifier(ref.watch(dioProvider));
+  },
 );

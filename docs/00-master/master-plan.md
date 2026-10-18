@@ -17,6 +17,7 @@
 - **프로젝트 위치**: 신규 개발(백엔드+Flutter 앱 전체)은 `~/Desktop/NewStory` 폴더에서 처음부터 새로 작성한다. 구 프로젝트 폴더(`~/Desktop/프로젝트/newspace/newstory`)는 참고 자료로만 두고 더 이상 수정하지 않는다 — 위 "재사용" 표현은 코드 방향성/설계를 재사용한다는 뜻이며, 실제 코드는 새 폴더에 새로 작성한다.
 - **배포**도 새 `NewStory` 폴더 기준으로 다시 세팅한다. 구 폴더의 배포 설정(서버/인프라/CI 등)은 참고만 하고 그대로 재사용하지 않는다.
 - **Flutter Bundle ID**: `com.newstory.app` (Android 패키지명 / iOS 번들 ID 공통, Google OAuth 클라이언트에 이미 이 값으로 등록 완료)
+- **1차 목표(2026-09-04 결정)**: Android APK를 스토어 배포 없이 직접 다운로드해서 시연 가능한 상태로 만드는 것. 웹 버전과 iOS는 이번 1차 범위에서 제외 — 후순위. 자세한 내용은 `docs/01-decisions/2026-09-04-mvp-scope.md` 참고
 
 ## 3. 확정 디자인 요약
 방향: **매거진 그리드형(B)**. 캔버스 아티팩트에 핵심 화면 7개 확정 (`newstory-mobile-home-wireframes.html`, claude.ai 아티팩트).
@@ -31,13 +32,13 @@
 - 변환 탭 아이콘: 마법봉+반짝이(AI 클리셰) 대신 좌우 스왑 화살표 아이콘 사용
 
 화면 7개와 담당 기능:
-1. **홈** — RSS 카테고리 칩, 히어로 카드, 2단 그리드, 카드요약 미리보기 "30초 컷" 배지
+1. **홈** — RSS 카테고리 칩, 히어로 카드, 2단 그리드, 카드요약 미리보기 "30초 컷" 배지 / 상단 돋보기 → 제목 검색 화면(카테고리 필터). 알림(종) 아이콘 없음 (2026-10-16)
 2. **기사 상세 (동화체/소설체)** — 원문/동화체/소설체/카드요약 세그먼트, 본문 내 용어 탭-설명
 3. **기사 상세 (카드요약)** — bullet 5개 이하 + "30초 컷" 배지
 4. **직접 변환** — URL 입력, 지원 언론사 chip, 스타일 3종 선택
 5. **로그인** — 카카오/구글 소셜 로그인 우선, 이메일은 보조
-6. **보관함** — 보관함/히스토리 세그먼트 통합
-7. **MY** — 프로필, 홈스크린 위젯 온오프 토글, 설정 메뉴
+6. **보관함** — 보관함/히스토리 세그먼트 통합. 홈과 같은 텍스트 리스트 + 제목 검색·카테고리·변환종류 필터 (2026-10-18)
+7. **MY** — 프로필, 홈스크린 위젯 온오프 토글, 관심 카테고리 선택 (2026-10-18), 설정 메뉴
 
 ## 4. 확정 기능 백로그 (우선순위 순)
 1. 백엔드 버그/보안 선행 정리
@@ -46,9 +47,12 @@
 4. 변환 결과 캐싱
 5. 카드요약 예상 읽기 시간 배지
 6. 소셜 로그인 (카카오/구글)
-7. 홈스크린 위젯 (오늘의 카드요약 3개, 사용자 온오프)
+7. 홈스크린 위젯 (사용자 온오프) — 2026-10-18 변경: 관심 카테고리의 오늘 인기 뉴스 3개 제목, 누르면 앱에서 그 기사 카드요약을 바로 생성 (서브플랜 백엔드 18 / 앱 17)
+8. 뉴스 제목 검색 — 제목 부분 일치 + 카테고리 필터 (2026-10-16 추가, 서브플랜 백엔드 16 / 앱 14)
 
 **보류**: 연속 이슈 "다음화" 형식 이어보기 (구현 난이도 높음, 이번 범위 제외)
+
+**제외**: 알림 기능 — 만들지 않음, 홈의 종 아이콘도 제거 (2026-10-16)
 
 ## 5. 엔드포인트 설계
 
@@ -67,13 +71,13 @@
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
 | GET `/api/users/me` | 🟢 | 내 정보 조회 |
-| PATCH `/api/users/me` | 🟡 | `UpdateUserRequest`에 `widgetEnabled`(boolean) 필드 추가 |
+| PATCH `/api/users/me` | 🟡 | `UpdateUserRequest`에 `widgetEnabled`(boolean) 필드 추가. `interestCategories`(string[], 정치·경제·사회·문화·IT·스포츠, 그 외 400) 추가 — 응답에도 포함 (2026-10-18) |
 | GET `/api/users/me` 응답 | 🟡 | `lastGlossaryLevel`(`LOW`\|`MEDIUM`\|`HIGH`) 필드 추가 — 변환 화면 기본 선택값으로 사용 |
 
 ### 뉴스
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
-| GET `/api/news` | 🟡 | `category` 쿼리 파라미터 추가 (RSS 실카테고리 기준). 프론트 키워드매칭 방식 제거 |
+| GET `/api/news` | 🟡 | `category` 쿼리 파라미터 추가 (RSS 실카테고리 기준). 프론트 키워드매칭 방식 제거. `keyword` 파라미터 추가 — 제목 부분 일치(대소문자 무시, 최대 50자), `category`와 AND (2026-10-16, 서브플랜 16) |
 | GET `/api/news/categories` | 🔵 | 홈 화면 카테고리 칩 목록 반환 |
 | GET `/api/news/popular` | 🟢 | 기존 유지 (스펙엔 없었지만 실제 구현되어 있던 것 정식 반영) |
 | POST `/api/news/{id}/view` | 🟢 | 조회수 기록, 기존 유지 |
@@ -84,7 +88,7 @@
 |---|---|---|
 | GET `/api/convert/original` | 🟢 | 원본 크롤링, 인증 불필요 |
 | POST `/api/convert` | 🟡 | 요청에 `level`(`LOW`\|`MEDIUM`\|`HIGH`, 생략 시 사용자의 `lastGlossaryLevel` 사용) 추가. 응답 확장: `glossary`(용어-뜻풀이 배열), `readingTimeLabel`(카드요약일 때만). 요청 처리 시 `users.last_glossary_level`을 이번 `level`로 갱신. 내부적으로 캐시 확인 로직 추가 |
-| GET `/api/convert/{resultId}` | 🟢 | 변환 결과 단건 조회 |
+| GET `/api/convert/{resultId}` | 🟡 | 변환 결과 단건 조회. 응답에 `glossary`(캐시에서 채움), `bookmarked`, `level` 포함 (2026-10-12, 서브플랜 15) |
 
 `glossary` 설계: Agent A가 어려운 용어를 `{{term:용어|뜻풀이}}` 형태로 본문에 인라인 마킹. 백엔드가 파싱해 순수 텍스트 + 용어-뜻풀이 매핑 배열로 분리 응답. 오프셋 계산 없이 안정적으로 처리.
 
@@ -93,14 +97,15 @@
 ### 위젯 (신규 도메인)
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
-| GET `/api/widget/today-cards` | 🔵 | 오늘의 카드요약 3개, 위젯 전용 경량 payload |
+| GET `/api/widget/today-cards` | 🔵 | 오늘의 카드요약 3개, 위젯 전용 경량 payload (2026-10-18부터 새 앱은 미사용, 옛 앱 호환용으로 유지) |
+| GET `/api/widget/popular` | 🔵 | `?categories=정치,IT` (로그인 불필요). 오늘 기사 중 오늘 조회수순 최대 3개 `{articleId, title, category}`, 모자라면 최신으로 채움. 생략 시 전체 (2026-10-18, 서브플랜 18) |
 
 ### 히스토리 / 보관함
 | 메서드/경로 | 상태 | 설명 |
 |---|---|---|
-| GET `/api/history` | 🟢 | 유지 |
-| DELETE `/api/history/{resultId}` | 🟢 | 유지 |
-| GET `/api/bookmarks` | 🟢 | 유지 |
+| GET `/api/history` | 🟡 | 마지막으로 본 순서(`viewedAt`), 숨긴 항목 제외. 응답에 `articleUrl`, `level`, `viewedAt` 추가 (2026-10-12), `category` 추가 — 앱 보관함 탭 카테고리 필터용, 직접 변환 기사는 null (2026-10-18) |
+| DELETE `/api/history/{resultId}` | 🟡 | 보관함에 있는 항목이면 히스토리에서만 숨김, 아니면 삭제 (2026-10-12) |
+| GET `/api/bookmarks` | 🟡 | 응답에 `articleUrl`, `level` 추가 (2026-10-12), `category` 추가 (2026-10-18) |
 | POST `/api/bookmarks/{resultId}` | 🟢 | 유지 |
 | DELETE `/api/bookmarks/{resultId}` | 🟢 | 유지 |
 
@@ -116,6 +121,7 @@
 - `password` 컬럼 `NULL` 허용으로 변경 (소셜 로그인 계정은 비밀번호 없음)
 - `widget_enabled BOOLEAN NOT NULL DEFAULT false` 추가
 - `last_glossary_level VARCHAR(10) NOT NULL DEFAULT 'MEDIUM'` 추가 — 용어 글로서리 난이도 마지막 선택값
+- `interest_categories VARCHAR(100) NOT NULL DEFAULT ''` 추가 — 관심 카테고리(쉼표 구분, 빈 값 = 전체). V8, 2026-10-18
 - UNIQUE 제약 `(provider, provider_id)` 추가
 
 **신규 테이블: conversion_cache**
@@ -133,7 +139,11 @@ UNIQUE (article_id, style, level)
 ```
 캐시 키가 `(article_id, style)`에서 `(article_id, style, level)`로 바뀜 — 레벨마다 glossary 마킹 개수가 달라 같은 기사+스타일이어도 레벨별로 변환 결과가 다르기 때문. 이미 존재하던 `(article_id, style)` UNIQUE 제약은 마이그레이션에서 드롭 후 새 3-컬럼 UNIQUE로 교체.
 
-`converted_results`(사용자별 히스토리 로그)와는 별도 — 캐시는 기사+스타일+레벨 단위 전역 공유, 히스토리는 사용자별 요청 기록. `POST /api/convert`: 캐시 먼저 조회 → 있으면 AI 재호출 없이 `converted_results`에 사용자별 행만 생성 → 없으면 파이프라인 실행 후 둘 다 저장.
+`converted_results`(사용자별 히스토리 로그)와는 별도 — 캐시는 기사+스타일+레벨 단위 전역 공유, 히스토리는 사용자별 요청 기록. `POST /api/convert`: 캐시 먼저 조회(크롤링보다 먼저) → 있으면 크롤링·AI 재호출 없이 사용자별 행만 기록 → 없으면 파이프라인 실행 후 둘 다 저장. 같은 키 동시 요청은 하나로 묶어 AI 1회 호출 (2026-10-12, 서브플랜 14).
+
+**converted_results (2026-10-12, V7)**
+- `level VARCHAR(10) NOT NULL DEFAULT 'MEDIUM'`, `viewed_at TIMESTAMP NOT NULL`, `hidden_from_history BOOLEAN NOT NULL DEFAULT false` 추가
+- 같은 사용자 + 같은 기사·스타일·레벨이면 기존 행을 재사용 (히스토리 중복 방지, 보관함 저장 상태 유지). 결정 기록: `docs/01-decisions/2026-10-12-result-reuse-history-hide.md`
 
 ## 7. 알려진 버그/보안 이슈 (선행 정리 대상)
 - `ConvertService`: `verificationPassed`가 실제 검증 결과와 무관하게 항상 `true`로 저장되는 로직 오류 수정
@@ -146,7 +156,7 @@ UNIQUE (article_id, style, level)
 4. 용어 글로서리 (Agent A 프롬프트 + ConvertResponse 확장)
 5. 소셜 로그인 (users 스키마 변경 포함)
 6. 위젯 API + 카드요약 읽기시간 배지
-7. (백엔드 완료 후) Flutter 앱 개발 착수 — 화면 7개 순서대로
+7. (백엔드 완료 후) Flutter 앱 개발 착수 — 화면 7개 순서대로. **Android 빌드 우선** (디버그/임시 서명 APK로 시연 가능한 상태가 1차 목표), iOS·웹 빌드는 이후 단계
 
 ## 9. 진행 방식
 - 각 항목 착수 전, 이 마스터 기획서를 참고해 `03-backend/`(또는 `04-app/`)에 하위 기획서 작성

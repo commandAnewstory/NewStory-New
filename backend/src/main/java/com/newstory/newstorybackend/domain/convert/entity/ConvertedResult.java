@@ -65,7 +65,33 @@ public class ConvertedResult {
   @Builder.Default
   private Boolean isFeed = false;
 
+  @Column(nullable = false, length = 10)
+  @Builder.Default
+  private String level = "MEDIUM";
+
+  @Column(name = "viewed_at", nullable = false)
+  @Builder.Default
+  private LocalDateTime viewedAt = LocalDateTime.now();
+
+  @Column(name = "hidden_from_history", nullable = false)
+  @Builder.Default
+  private Boolean hiddenFromHistory = false;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
+
+  /** 같은 기사·스타일·레벨을 다시 봤을 때: 최신 캐시 내용으로 맞추고, 본 시간 갱신, 히스토리에 다시 노출. */
+  public void reuse(ConversionCache cache) {
+    this.convertedText = cache.getConvertedText();
+    this.verificationPassed = cache.getVerificationPassed();
+    this.verificationMethod = cache.getVerificationMethod();
+    this.retryCount = cache.getRetryCount();
+    this.viewedAt = LocalDateTime.now();
+    this.hiddenFromHistory = false;
+  }
+
+  public void hideFromHistory() {
+    this.hiddenFromHistory = true;
+  }
 }
