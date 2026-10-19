@@ -52,22 +52,11 @@ public class RssNewsCollector {
             "SBS",
             "사회",
             "rss"
-          },
+          }
           // 중앙일보: RSS 서비스 종료 — 제거
           // MBC: RSS 폐지(에러 페이지 리다이렉트) — 제거
-          // Google News — 검색 쿼리 기반, 카테고리는 소스 정의에서 결정
-          new String[] {
-            "https://news.google.com/rss/search?q=기술+IT&hl=ko&gl=KR&ceid=KR:ko",
-            "Google News",
-            "IT",
-            "google_news"
-          },
-          new String[] {
-            "https://news.google.com/rss/search?q=정치&hl=ko&gl=KR&ceid=KR:ko",
-            "Google News",
-            "정치",
-            "google_news"
-          });
+          // Google News: 링크가 news.google.com 리다이렉트라 본문 크롤링이 100% 실패(502) → 제거 (2026-10-19)
+          );
 
   /**
    * news_articles.url 유니크 인덱스(btree) 한계 2704바이트 안쪽으로. 넘는 URL(구글 뉴스 리다이렉트 등)은 저장하면 인덱스 에러가 나서 건너뛴다.
