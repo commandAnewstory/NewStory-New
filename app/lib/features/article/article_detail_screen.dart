@@ -12,6 +12,8 @@ import 'widgets/converted_tab.dart';
 import 'widgets/card_summary_view.dart';
 import 'widgets/glossary_sheet.dart';
 
+const _styleLabels = {'fairy_tale': '동화체', 'novel': '소설체', 'card': '카드요약'};
+
 const _levels = [
   (value: 'LOW', label: '쉬움', desc: '어려운 용어를 최대한 많이 풀어드려요'),
   (value: 'MEDIUM', label: '보통', desc: '적당히 설명해드려요'),
@@ -42,12 +44,35 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   void initState() {
     super.initState();
     final style = widget.initialStyle;
-    if (style == 'fairy_tale' || style == 'novel' || style == 'card') _tab = style!;
+    final fromWidget = _styleLabels.containsKey(style);
+    if (fromWidget) {
+      _tab = style!;
+    } else {
+      // 생성 중에 뒤로 갔다가 다시 들어온 경우: 보던 스타일 탭(생성 중이면 로딩, 끝났으면 결과)으로 연다
+      final prev = ref.read(articleDetailProvider(widget.articleId));
+      if (_styleLabels.containsKey(prev.lastTab) && prev.hasActivity(prev.lastTab)) {
+        _tab = prev.lastTab;
+      }
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final notifier = ref.read(articleDetailProvider(widget.articleId).notifier);
       notifier.loadOriginal();
-      if (_tab != 'original') notifier.openWithStyle(_tab);
+      if (fromWidget) {
+        notifier.openWithStyle(_tab);
+      } else {
+        notifier.setTab(_tab);
+      }
     });
+  }
+
+  /// 탭 이동 (난이도 선택 대기는 취소)
+  void _goTab(String tab) {
+    setState(() {
+      _tab = tab;
+      _pendingStyle = null;
+    });
+    ref.read(articleDetailProvider(widget.articleId).notifier).setTab(tab);
   }
 
   @override
@@ -69,20 +94,11 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
                     busy: state.converting,
                     onSelected: (style) {
                       if (style == 'original') {
-                        setState(() {
-                          _tab = 'original';
-                          _pendingStyle = null;
-                        });
+                        _goTab('original');
                       } else {
-                        // 이미 변환됐거나 생성 중이면 난이도 다시 묻지 않고 그 탭으로 이동만
-                        final cached = state.cache.containsKey(style) ||
-                            state.converting.contains(style);
-                        if (cached) {
-                          setState(() {
-                            _tab = style;
-                            _pendingStyle = null;
-                          });
-                          notifier.selectStyle(style);
+                        // 이미 변환됐거나 생성 중·실패한 스타일이면 난이도 다시 묻지 않고 그 탭으로 이동만
+                        if (state.hasActivity(style)) {
+                          _goTab(style);
                         } else {
                           setState(() {
                             _pendingStyle = style;
@@ -161,17 +177,18 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       return const SizedBox.shrink();
     }
 
-    if (state.isConverting) {
-      return const Center(child: CircularProgressIndicator());
+    // 아래는 전부 지금 보고 있는 탭(_tab) 기준
+    if (state.converting.contains(_tab)) {
+      return _convertingView(_tab);
     }
 
-    if (state.convertError != null) {
-      return _errorView(
-          state, state.convertError!, () => notifier.retryConvert(level: _pendingLevel));
+    final error = state.convertErrors[_tab];
+    if (error != null) {
+      return _errorView(state, error, () => notifier.retryConvert());
     }
 
-    final result = state.currentResult;
-    if (result == null) return const SizedBox.shrink();
+    final result = state.cache[_tab];
+    if (result == null) return _startPrompt(state);
 
     if (_tab == 'card') {
       return CardSummaryView(result: result);
@@ -183,6 +200,48 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
       onShowGlossary: result.glossary.isNotEmpty
           ? () => GlossarySheet.show(context, result.glossary)
           : null,
+    );
+  }
+
+  /// 생성 중 — 뒤로 가거나 다른 탭을 봐도 계속 만든다는 걸 알려준다
+  Widget _convertingView(String style) {
+    return Center(
+      key: const Key('converting-view'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            Text(
+              '${_styleLabels[style] ?? '변환 결과'} 만드는 중이에요',
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '보통 20~40초 걸려요.\n뒤로 가거나 다른 탭을 봐도 계속 만들어요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, height: 1.5, color: Color(0xFF9A9CA3)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 변환 탭인데 아직 아무것도 안 한 상태 (보통은 난이도 선택으로 바로 감)
+  Widget _startPrompt(ArticleDetailState state) {
+    return Center(
+      child: TextButton(
+        key: const Key('start-convert'),
+        onPressed: () => setState(() {
+          _pendingStyle = _tab;
+          _pendingLevel = state.defaultLevel;
+        }),
+        child: const Text('변환 시작하기'),
+      ),
     );
   }
 
@@ -336,10 +395,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
         child: GestureDetector(
           onTap: () {
             final style = _pendingStyle!;
-            setState(() {
-              _tab = style;
-              _pendingStyle = null;
-            });
+            _goTab(style);
             notifier.selectStyle(style, level: _pendingLevel);
           },
           child: Container(
@@ -464,10 +520,10 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   bool _canBookmark(ArticleDetailState state) =>
       _tab != 'original' &&
       _pendingStyle == null &&
-      state.currentResult?.resultId != null;
+      state.cache[_tab]?.resultId != null;
 
   bool _isBookmarked(ArticleDetailState state) =>
-      _canBookmark(state) && state.currentResult!.bookmarked;
+      _canBookmark(state) && state.cache[_tab]!.bookmarked;
 
   Future<void> _toggleBookmark(
       BuildContext context, ArticleDetailState state) async {
@@ -488,7 +544,7 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
   Future<void> _share(BuildContext context, ArticleDetailState state) async {
     final url = state.articleUrl;
     if (url == null) return;
-    final result = _tab == 'original' ? null : state.currentResult;
+    final result = _tab == 'original' ? null : state.cache[_tab];
     final text = buildShareText(
       title: state.title ?? '',
       url: url,

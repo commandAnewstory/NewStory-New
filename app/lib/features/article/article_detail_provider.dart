@@ -74,6 +74,9 @@ class ArticleDetailState {
   /// 레벨 선택 기본값 — 사용자가 마지막으로 고른 레벨 (서버 `lastGlossaryLevel`)
   final String defaultLevel;
 
+  /// 화면에서 마지막으로 보고 있던 탭('original' | 스타일). 뒤로 갔다가 다시 들어오면 이 탭으로 연다.
+  final String lastTab;
+
   const ArticleDetailState({
     this.articleUrl,
     this.originalContent,
@@ -87,6 +90,7 @@ class ArticleDetailState {
     this.convertErrors = const {},
     this.defaultLevel = 'MEDIUM',
     this.isTogglingBookmark = false,
+    this.lastTab = 'original',
   });
 
   ConvertResult? get currentResult => cache[selectedStyle];
@@ -95,6 +99,10 @@ class ArticleDetailState {
   bool get isConverting => converting.contains(selectedStyle);
 
   String? get convertError => convertErrors[selectedStyle];
+
+  /// 이 스타일에 대해 보여줄 게 있는지 (결과·생성 중·실패) — 없으면 난이도부터 고른다
+  bool hasActivity(String style) =>
+      cache.containsKey(style) || converting.contains(style) || convertErrors.containsKey(style);
 
   ArticleDetailState copyWith({
     String? articleUrl,
@@ -109,6 +117,7 @@ class ArticleDetailState {
     Map<String, String>? convertErrors,
     String? defaultLevel,
     bool? isTogglingBookmark,
+    String? lastTab,
   }) {
     return ArticleDetailState(
       articleUrl: articleUrl ?? this.articleUrl,
@@ -123,6 +132,7 @@ class ArticleDetailState {
       convertErrors: convertErrors ?? this.convertErrors,
       defaultLevel: defaultLevel ?? this.defaultLevel,
       isTogglingBookmark: isTogglingBookmark ?? this.isTogglingBookmark,
+      lastTab: lastTab ?? this.lastTab,
     );
   }
 }
@@ -146,10 +156,30 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   /// 위젯 "관심 뉴스"에서 눌러 들어온 경우: 난이도를 묻지 않고 사용자 기본 난이도로 바로 [style] 변환 시작.
   /// 기사·기본 난이도를 아직 불러오는 중이면 끝날 때까지 기다렸다가 시작한다.
   Future<void> openWithStyle(String style) async {
-    state = state.copyWith(selectedStyle: style);
+    state = state.copyWith(selectedStyle: style, lastTab: style);
+    if (state.cache.containsKey(style) || state.converting.contains(style)) return;
+    // 기사·난이도를 기다리는 동안에도 화면엔 "만드는 중"이 보이게 먼저 생성 중으로 표시
+    state = state.copyWith(
+      converting: {...state.converting, style},
+      convertErrors: Map.of(state.convertErrors)..remove(style),
+    );
     await Future.wait([_articleReady.future, _levelLoaded]);
-    if (!mounted || state.articleUrl == null) return;
-    await selectStyle(style, level: state.defaultLevel);
+    if (!mounted) return;
+    if (state.articleUrl == null) {
+      state = state.copyWith(
+        converting: {...state.converting}..remove(style),
+        convertErrors: Map.of(state.convertErrors)..[style] = '기사를 불러오지 못했어요. 다시 시도해 주세요.',
+      );
+      return;
+    }
+    await _convert(style, level: state.defaultLevel, reserved: true);
+  }
+
+  /// 화면 탭이 바뀔 때 — 다시 들어왔을 때 같은 탭을 열고, 저장/공유가 보고 있는 스타일 기준으로 동작하게
+  void setTab(String tab) {
+    state = tab == 'original'
+        ? state.copyWith(lastTab: tab)
+        : state.copyWith(lastTab: tab, selectedStyle: tab);
   }
 
   Future<void> _loadDefaultLevel() async {
@@ -169,19 +199,28 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   }
 
   Future<void> _loadArticle() async {
+    if (await _fetchArticle()) {
+      _recordView();
+      // trigger immediately now that url is known (avoids postFrameCallback race)
+      await loadOriginal();
+    }
+  }
+
+  /// 기사 제목·URL 조회. 성공하면 true
+  Future<bool> _fetchArticle() async {
     try {
       final article = await _repo.fetchArticleById(articleId);
+      if (!mounted) return false;
       state = state.copyWith(
         title: article.title,
         articleUrl: article.url,
         isLoadingArticle: false,
       );
-      if (!_articleReady.isCompleted) _articleReady.complete();
-      _recordView();
-      // trigger immediately now that url is known (avoids postFrameCallback race)
-      await loadOriginal();
+      return true;
     } catch (_) {
-      state = state.copyWith(isLoadingArticle: false);
+      if (mounted) state = state.copyWith(isLoadingArticle: false);
+      return false;
+    } finally {
       if (!_articleReady.isCompleted) _articleReady.complete();
     }
   }
@@ -216,13 +255,19 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
     }
   }
 
-  Future<void> retryConvert({String level = 'MEDIUM'}) async {
-    await _convert(state.selectedStyle, level: level);
+  Future<void> retryConvert({String? level}) async {
+    if (state.articleUrl == null && !await _fetchArticle()) return; // 기사 자체를 못 불러온 경우 — 기사부터 다시
+    await _convert(state.selectedStyle, level: level ?? state.defaultLevel);
   }
 
-  Future<void> _convert(String style, {String level = 'MEDIUM'}) async {
+  /// [reserved] = 호출한 쪽이 이미 생성 중으로 표시해 둠 (위젯 진입)
+  Future<void> _convert(String style, {String level = 'MEDIUM', bool reserved = false}) async {
     final url = state.articleUrl;
-    if (url == null || state.converting.contains(style)) return;
+    if (url == null) {
+      if (reserved) state = state.copyWith(converting: {...state.converting}..remove(style));
+      return;
+    }
+    if (!reserved && state.converting.contains(style)) return;
 
     state = state.copyWith(
       converting: {...state.converting, style},

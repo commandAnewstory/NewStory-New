@@ -35,7 +35,8 @@ void main() {
 
   tearDown(() => container.dispose());
 
-  Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 50));
+  // 전체 테스트를 병렬로 돌려 CPU가 바쁠 때도 안 흔들리게 넉넉히
+  Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 250));
 
   test('기사 상세에 들어가면 조회수를 한 번 기록한다', () async {
     container.listen(articleDetailProvider(7), (_, _) {});
