@@ -4,12 +4,13 @@ import com.newstory.newstorybackend.domain.news.client.RssFeedClient;
 import com.newstory.newstorybackend.domain.news.dto.RssItem;
 import com.newstory.newstorybackend.domain.news.entity.NewsArticle;
 import com.newstory.newstorybackend.domain.news.repository.NewsArticleRepository;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -68,20 +69,25 @@ public class RssNewsCollector {
             "google_news"
           });
 
+  /**
+   * news_articles.url 유니크 인덱스(btree) 한계 2704바이트 안쪽으로. 넘는 URL(구글 뉴스 리다이렉트 등)은 저장하면 인덱스 에러가 나서 건너뛴다.
+   */
+  static final int MAX_URL_BYTES = 2000;
+
   /** 매시 정각 스케줄러용 — 피드에 있는 건 날짜 상관없이 전부 저장 */
-  @Transactional
   public int collectAll() {
     return collect(null);
   }
 
   /** [since] 이전에 발행된 기사는 건너뛰고 수집 (발행일 없는 기사는 저장). 빈 DB 초기 채우기용 */
-  @Transactional
   public int collectSince(LocalDateTime since) {
     return collect(since);
   }
 
+  /** 기사 1건씩 따로 저장한다(save가 건마다 자체 트랜잭션). 예전엔 전체를 한 트랜잭션으로 묶어서 기사 하나가 DB 에러를 내면 그 회차 수집이 통째로 롤백됐다. */
   private int collect(LocalDateTime since) {
     int saved = 0;
+    int skipped = 0;
     for (String[] src : SOURCES) {
       String url = src[0], sourceName = src[1], category = src[2], sourceType = src[3];
       List<RssItem> items = rssFeedClient.fetch(url, sourceName, category, sourceType);
@@ -91,14 +97,26 @@ public class RssNewsCollector {
             && item.getPublishedAt().isBefore(since)) {
           continue;
         }
-        if (!newsArticleRepository.existsByUrl(item.getLink())) {
-          newsArticleRepository.save(toEntity(item));
-          saved++;
+        String link = item.getLink();
+        if (link == null
+            || link.isBlank()
+            || link.getBytes(StandardCharsets.UTF_8).length > MAX_URL_BYTES) {
+          skipped++;
+          continue;
+        }
+        try {
+          if (!newsArticleRepository.existsByUrl(link)) {
+            newsArticleRepository.save(toEntity(item));
+            saved++;
+          }
+        } catch (DataAccessException e) {
+          skipped++;
+          log.warn("[{}] 기사 저장 실패, 건너뜀: {} ({})", sourceName, item.getTitle(), e.getMessage());
         }
       }
       log.debug("[{}] {}건 수집 완료", sourceName, items.size());
     }
-    log.info("RSS 수집 완료: 신규 {}건 저장", saved);
+    log.info("RSS 수집 완료: 신규 {}건 저장, {}건 건너뜀", saved, skipped);
     return saved;
   }
 

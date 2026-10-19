@@ -23,6 +23,7 @@ build/
 # Spring / Gradle
 *.class
 *.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
 .gradle/
 **/build/
 !**/src/main/**/build/
