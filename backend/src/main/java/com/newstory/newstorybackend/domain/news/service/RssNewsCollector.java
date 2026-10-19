@@ -33,7 +33,10 @@ public class RssNewsCollector {
           new String[] {"https://rss.donga.com/society.xml", "동아일보", "사회", "rss"},
           new String[] {"https://rss.donga.com/culture.xml", "동아일보", "문화", "rss"},
           new String[] {"https://rss.donga.com/sports.xml", "동아일보", "스포츠", "rss"},
-          new String[] {"https://rss.donga.com/it.xml", "동아일보", "IT", "rss"},
+          // 동아 it.xml은 2026-10 기준 빈 응답(200, 0바이트) → IT/의학 섹션 피드(science.xml)로 교체
+          new String[] {"https://rss.donga.com/science.xml", "동아일보", "IT", "rss"},
+          // 한국경제 IT·과학
+          new String[] {"https://www.hankyung.com/feed/it", "한국경제", "IT", "rss"},
           // SBS — SectionRssFeed 형식으로 교체 (구 RSS.xml는 404)
           new String[] {
             "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER",
