@@ -4,6 +4,7 @@ import com.newstory.newstorybackend.domain.news.client.RssFeedClient;
 import com.newstory.newstorybackend.domain.news.dto.RssItem;
 import com.newstory.newstorybackend.domain.news.entity.NewsArticle;
 import com.newstory.newstorybackend.domain.news.repository.NewsArticleRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -67,13 +68,29 @@ public class RssNewsCollector {
             "google_news"
           });
 
+  /** 매시 정각 스케줄러용 — 피드에 있는 건 날짜 상관없이 전부 저장 */
   @Transactional
   public int collectAll() {
+    return collect(null);
+  }
+
+  /** [since] 이전에 발행된 기사는 건너뛰고 수집 (발행일 없는 기사는 저장). 빈 DB 초기 채우기용 */
+  @Transactional
+  public int collectSince(LocalDateTime since) {
+    return collect(since);
+  }
+
+  private int collect(LocalDateTime since) {
     int saved = 0;
     for (String[] src : SOURCES) {
       String url = src[0], sourceName = src[1], category = src[2], sourceType = src[3];
       List<RssItem> items = rssFeedClient.fetch(url, sourceName, category, sourceType);
       for (RssItem item : items) {
+        if (since != null
+            && item.getPublishedAt() != null
+            && item.getPublishedAt().isBefore(since)) {
+          continue;
+        }
         if (!newsArticleRepository.existsByUrl(item.getLink())) {
           newsArticleRepository.save(toEntity(item));
           saved++;
