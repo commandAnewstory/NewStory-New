@@ -7,6 +7,7 @@ import 'core/auth/auth_notifier.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widget/home_widget_platform.dart';
+import 'core/convert/convert_jobs_fab.dart';
 import 'core/widget/home_widget_service.dart';
 import 'core/widget/home_widget_sync.dart';
 
@@ -65,6 +66,8 @@ class _NewStoryAppState extends ConsumerState<NewStoryApp> {
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      // 어느 화면에서든 보이는 변환 상태 플로팅 버튼
+      builder: (context, child) => withConvertJobsFab(router, child),
     );
   }
 }
