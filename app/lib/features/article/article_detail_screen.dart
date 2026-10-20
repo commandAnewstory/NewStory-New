@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/convert/convert_jobs.dart';
 import '../../core/launch/url_opener.dart';
 import '../../core/router/app_router.dart';
 import '../../core/share/share_text.dart';
@@ -184,11 +185,13 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
 
     final error = state.convertErrors[_tab];
     if (error != null) {
+      _markSeen(_tab);
       return _errorView(state, error, () => notifier.retryConvert());
     }
 
     final result = state.cache[_tab];
     if (result == null) return _startPrompt(state);
+    _markSeen(_tab);
 
     if (_tab == 'card') {
       return CardSummaryView(result: result);
@@ -201,6 +204,13 @@ class _ArticleDetailScreenState extends ConsumerState<ArticleDetailScreen> {
           ? () => GlossarySheet.show(context, result.glossary)
           : null,
     );
+  }
+
+  /// 이 스타일 결과(또는 실패 안내)를 화면에 띄웠으니 플로팅 버튼 목록에서 뺀다
+  void _markSeen(String style) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(convertJobsProvider.notifier).seen(widget.articleId, style);
+    });
   }
 
   /// 생성 중 — 뒤로 가거나 다른 탭을 봐도 계속 만든다는 걸 알려준다

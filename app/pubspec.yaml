@@ -2,7 +2,7 @@ name: newstory
 description: "뉴스를 거부감 없게, 재밌고 가볍게 볼 수 있는 앱."
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.12.2

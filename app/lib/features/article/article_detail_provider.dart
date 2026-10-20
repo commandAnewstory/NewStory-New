@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dio_client.dart';
 import '../../core/bookmark/bookmark_api.dart';
+import '../../core/convert/convert_jobs.dart';
 import '../home/article_repository.dart';
 
 const contentUnavailableMessage = '기사 본문을 가져오지 못했어요. 원문 사이트에서 확인해 주세요.';
@@ -143,11 +144,15 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
   final BookmarkApi _bookmarks;
   final int articleId;
 
+  /// 화면 밖 플로팅 버튼용 전역 작업 목록 (테스트에선 없을 수 있음)
+  final ConvertJobsNotifier? jobs;
+
   /// 기사 URL을 알게 되면(성공·실패 모두) 끝나는 신호 — 위젯에서 바로 변환하려고 열 때 기다린다
   final _articleReady = Completer<void>();
   late final Future<void> _levelLoaded;
 
-  ArticleDetailNotifier(this._dio, this._repo, this._bookmarks, this.articleId)
+  ArticleDetailNotifier(this._dio, this._repo, this._bookmarks, this.articleId,
+      {this.jobs})
       : super(const ArticleDetailState()) {
     _loadArticle();
     _levelLoaded = _loadDefaultLevel();
@@ -273,6 +278,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
       converting: {...state.converting, style},
       convertErrors: Map.of(state.convertErrors)..remove(style),
     );
+    jobs?.start(articleId, style, state.title ?? '기사');
     try {
       final response = await _dio.post('/api/convert', data: {
         'url': url,
@@ -281,6 +287,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
       });
       final data = response.data['data'] as Map<String, dynamic>;
       final result = ConvertResult.fromJson(data);
+      jobs?.finish(articleId, style, success: true);
       if (!mounted) return;
       // await 동안 다른 스타일 생성이 끝났을 수 있으니 항상 최신 state 기준으로 합친다
       state = state.copyWith(
@@ -289,6 +296,7 @@ class ArticleDetailNotifier extends StateNotifier<ArticleDetailState> {
         defaultLevel: level,
       );
     } catch (e) {
+      jobs?.finish(articleId, style, success: false);
       if (!mounted) return;
       state = state.copyWith(
         converting: {...state.converting}..remove(style),
@@ -337,5 +345,6 @@ final articleDetailProvider = StateNotifierProvider.family<
     ref.watch(articleRepositoryProvider),
     ref.watch(bookmarkApiProvider),
     articleId,
+    jobs: ref.read(convertJobsProvider.notifier),
   ),
 );
